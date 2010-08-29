@@ -24,6 +24,21 @@ class Boot {
       DB.defineConnectionManager(DefaultConnectionIdentifier, vendor)
     }
 
+    //Register packages for auto-finding snippet
+    LiftRules.addToPackages("websearch")
 
+    //Build SiteMap
+    val entries = List(
+      Menu.i("Home") / "index",
+      //Show anything from the Static dir
+      Menu(Loc("Static", Link(List("static"), true, "/static/index"),
+               "Static Content")),
+      Menu.i("Search") / "search" / "index"
+    )
+    //LiftRules.setSiteMap(SiteMap(entries:_*))
+
+    
+    // Force the request to be UTF-8
+    LiftRules.early.append(_.setCharacterEncoding("UTF-8"))
   }
 }
