@@ -62,7 +62,7 @@ class Search extends CometActor with CometListener {
   }
 
   private def update() = {
-    registerWith ! (from + count)
+    registerWith ! (from + 2*count)
     reRender(false)
   }
 
