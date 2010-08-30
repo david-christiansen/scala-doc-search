@@ -34,7 +34,7 @@ class Search extends CometActor with CometListener {
   def render = bind("search", 
                     "search" -> ajaxText(term, doSearch _), 
                     "next" -> a(doNext _, Text("Next >>")),
-                    "prev" -> a(doPrev _, Text("<< Prev")),
+                    "prev" -> (if (from <= 0) Text("<< Prev") else a(doPrev _, Text("<< Prev"))),
                     "count" -> ajaxSelectObj[Int](1 to 5 map (x => (x * 10) -> (x * 10).toString), Full(count), setCount _),
                     "showing" -> showing _,
                     "results" -> renderResults)
