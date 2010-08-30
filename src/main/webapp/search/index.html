@@ -2,6 +2,13 @@
   <h2>Search</h2>
   <lift:comet type="Search" name="none">
     <search:search />
+    <search:showing>
+      <div>
+        Showing results <showing:start /> through <showing:end />
+      </div>
+    </search:showing>
     <search:results>No results</search:results>
+    <search:prev /> <search:next />
+    Show: <search:count />
   </lift:comet>
 </lift:surround>

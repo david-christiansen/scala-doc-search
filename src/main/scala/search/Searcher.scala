@@ -25,7 +25,6 @@ class Searcher(server: SearchServer, term: String) extends SpecializedLiftActor[
     case Go => {
       if (count < searchTo) {
         server ! NextResult("Result " + count + " for '" + term + "'")
-        println("msg sent")
         count += 1
         Thread.sleep(500L)
         this ! Go
@@ -55,6 +54,12 @@ class SearchServer(term: String) extends LiftActor with ListenerManager {
     case NextResult(res) => {
       results += res
       updateListeners()
+    }
+    case a: Int => {
+      println("yo")
+      searcher ! Expand(a)
+      done = false
+      searcher go
     }
   }
 
