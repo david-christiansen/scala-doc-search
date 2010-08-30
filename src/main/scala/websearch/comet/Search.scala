@@ -10,6 +10,7 @@ import net.liftweb.common.{Box, Full}
 import net.liftweb.util._
 import net.liftweb.actor._
 import net.liftweb.util.Helpers._
+import net.liftweb.util.HttpHelpers._
 import net.liftweb.http.js.JsCmds.{SetHtml, Noop}
 import net.liftweb.http.js.JE.Str
 
@@ -20,7 +21,7 @@ class Search extends CometActor with CometListener {
 
   def registerWith = SearchServer.getServer(term)
 
-  private var term = ""
+  private var term = S.param("q") openOr ""
   private var from = 0
   private var count = 10
 
@@ -37,6 +38,7 @@ class Search extends CometActor with CometListener {
                     "prev" -> (if (from <= 0) Text("<< Prev") else a(doPrev _, Text("<< Prev"))),
                     "count" -> ajaxSelectObj[Int](1 to 5 map (x => (x * 10) -> (x * 10).toString), Full(count), setCount _),
                     "showing" -> showing _,
+                    "permalink" -> <a>Permalink</a> % ("href" -> ("?q="+urlEncode(term))),
                     "results" -> renderResults)
 
   override def lowPriority : PartialFunction[Any, Unit] = {

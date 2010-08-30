@@ -35,7 +35,7 @@ class Boot {
                "Static Content")),
       Menu.i("Search") / "search" / "index"
     )
-    //LiftRules.setSiteMap(SiteMap(entries:_*))
+    LiftRules.setSiteMap(SiteMap(entries:_*))
 
     
     // Force the request to be UTF-8
