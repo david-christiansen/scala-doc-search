@@ -1,4 +1,4 @@
-package search
+package docsearch.search
 
 import collection.mutable.Buffer
 
@@ -17,7 +17,7 @@ case class NextResult(res: String) extends SearcherReply
 class Searcher(server: SearchServer, term: String) extends SpecializedLiftActor[SearcherRequest] {
   var count = 0
   var searchTo = 0
-
+  
   def messageHandler = {
     case Expand(num) => {
       if (num > searchTo) searchTo = num
@@ -56,7 +56,6 @@ class SearchServer(term: String) extends LiftActor with ListenerManager {
       updateListeners()
     }
     case a: Int => {
-      println("yo")
       searcher ! Expand(a)
       done = false
       searcher go

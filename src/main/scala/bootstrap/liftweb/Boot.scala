@@ -25,7 +25,7 @@ class Boot {
     }
 
     //Register packages for auto-finding snippet
-    LiftRules.addToPackages("websearch")
+    LiftRules.addToPackages("docsearch.web")
 
     //Build SiteMap
     val entries = List(

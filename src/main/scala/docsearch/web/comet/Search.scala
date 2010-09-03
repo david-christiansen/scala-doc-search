@@ -1,4 +1,4 @@
-package websearch.comet
+package docsearch.web.comet
 
 import scala.collection.immutable.Stream
 import scala.xml._
@@ -14,7 +14,7 @@ import net.liftweb.util.HttpHelpers._
 import net.liftweb.http.js.JsCmds.{SetHtml, Noop}
 import net.liftweb.http.js.JE.Str
 
-import search._
+import docsearch.search._
 
 class Search extends CometActor with CometListener {
   override def defaultPrefix = Full("search")
