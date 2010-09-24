@@ -1,66 +1,55 @@
 package docsearch.types
+import docsearch.query.QMemType._
 
-
-sealed abstract class PathComponent
-case class Package(name: String) extends PathComponent {
-  override def toString() = name
-}
-case class TypeName(name: String) extends PathComponent {
-  override def toString() = name
-}
-case object Super extends PathComponent {
-  override def toString() = "super"
-}
-case object This extends PathComponent {
-  override def toString() = "this"
+object Variance extends Enumeration {
+  type Variance = Value
+  val Covariant = Value("covariant")
+  val Contravariant = Value("contravariant")
+  val Invariant = Value("invariant")
 }
 
-case class Path(components: List[PathComponent]) {
-  override def toString() = {
-    if (components.length < 1) "ε"
-    else components map {_.toString} mkString "."
-  }
+object ClassOrTrait extends Enumeration {
+  type ClassOrTrait = Value
+  val Class = Value("class")
+  val Trait = Value("trait")
+}
+import Variance._
+import ClassOrTrait._
 
-  def +(another: PathComponent) = 
-    copy(components=(components ++ List(another)))
+case class Member(in: TypeDef, typeParams: List[Kind], memType: QMemType, resultType: TypeDef, args: List[List[Arg]])
 
-  def ::(another:PathComponent) = 
-    copy(components=(another::components))
+abstract sealed class Package {
+  def path(): List[Package]
+}
+case object PathRoot extends Package {
+  def path() = List(this)
+}
+case class NamedPackage(parent: Package, name: String) extends Package{
+  def path() = parent.path ++ List(this)
 }
 
-sealed abstract class SimpleType
-case class SingletonType(path: Path) extends SimpleType {
-  override def toString() = path.toString
-} 
-case class TypeProjection(typ: SimpleType, id: String) extends SimpleType {
-  override def toString() = typ.toString + "#" + id
+
+
+abstract sealed class Kind
+case object * extends Kind
+case class -->(from: Kind, to: Kind, variance: Variance) extends Kind
+
+abstract sealed class TypeDef
+case class Tuple(elements: List[TypeDef]) extends TypeDef
+case class Func(args: List[TypeDef], res: TypeDef) extends TypeDef
+case class Class(typeArgs: List[Kind], 
+                  name: String, 
+                  in: Either[Package, Class], 
+                  members: List[Member], 
+                  inherits: List[Class], 
+                  constructor: List[Arg], 
+                  classOrTrait: ClassOrTrait)
+case class Method(args: List[List[Arg]], res: TypeDef) extends TypeUse
+
+abstract sealed class TypeUse
+case class TypeApp(t: TypeDef, args: List[TypeUse]) extends TypeUse
+object TypeUse {
+  implicit def useType(t:TypeDef):TypeUse = TypeApp(t, List())
 }
-case class ParamType(typ: SimpleType, args: List[SimpleType]) extends SimpleType {
-  override def toString() = typ.toString + "["+ args.mkString(", ") + "]"
-}
-case class TupleType(types: List[SimpleType]) extends SimpleType {
-  override def toString() = "("+ types.mkString(", ") + ")"
-}
 
-case class Annotation(name: String) {
-  override def toString() = "@" + name
-}
-case class AnnotType(typ: SimpleType, annotations: List[Annotation])
-
-case class CompoundType(typ: AnnotType, wth: List[AnnotType] /* Add refinement here later */)
-
-case class InfixType(name: String, typ1: CompoundType, typ2: CompoundType)
-
-sealed abstract class FunctionArgs
-case class InfixArg(typ: InfixType) extends FunctionArgs
-case class ArgList(params: List[ParamType]) extends FunctionArgs
-
-sealed abstract class ExistentialMod
-case class ExistentialModType() extends ExistentialMod /* Add typedecl here later */
-case class ExistentialModVal() extends ExistentialMod /* add val decl here later */
-
-
-sealed abstract class Type
-case class FunctionType (args: FunctionArgs, res: Type) extends Type
-case class ExistentialType(typ: InfixType, existentials: List[ExistentialMod])
-
+case class Arg(name: String, typ: TypeUse)
