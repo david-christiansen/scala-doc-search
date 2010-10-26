@@ -1,7 +1,7 @@
 import sbt._
 
 class ScalaDocSearchProject(info: ProjectInfo) extends DefaultWebProject(info) {
-  val liftVersion = "2.1-SNAPSHOT"
+  val liftVersion = "2.1"
 
   val scalatoolsSnapshot =
     "Scala Tools Snapshot" at "http://scala-tools.org/repo-snapshots/"
@@ -9,6 +9,30 @@ class ScalaDocSearchProject(info: ProjectInfo) extends DefaultWebProject(info) {
   // If you're using JRebel for Lift development, uncomment
   // this line
   // override def scanDirectories = Nil
+
+  override def compileOptions = super.compileOptions ++ Seq(Unchecked)
+
+  override def runClasspath = super.runClasspath +++ compileClasspath
+
+  /* BEGIN COMPUTING CLASSPATH AND ARGS FOR DUMPER */
+  val dumperClassPath = runClasspath.get.map(_.absolutePath).mkString(":") + ":" +
+    buildScalaInstance.libraryJar.getAbsolutePath + ":" + buildScalaInstance.compilerJar.getAbsolutePath
+  
+  val scalaSourceDir = new java.io.File("scala-src")
+
+  def tree(f: java.io.File): Stream[java.io.File] = {
+    lazy val rest = if (f.isDirectory) f.listFiles.toStream.flatMap(tree) else Stream.empty
+    Stream.cons(f, rest)
+  }
+
+  val sources = tree(scalaSourceDir).map(_.getAbsolutePath).filter(_.endsWith(".scala"))
+
+  lazy val dump = runTask(
+    Some("scala.tools.nsc.ScalaDocDumper"), compileClasspath, 
+    Seq("-bootclasspath", dumperClassPath, 
+        "-classpath", dumperClassPath) ++ sources
+  ).dependsOn(compile) describedAs "Runs the data dumper."
+  /* END DEFINING DUMPER */
 
   override def libraryDependencies = Set(
     "net.liftweb" %% "lift-webkit" % liftVersion % "compile->default",
