@@ -53,7 +53,6 @@ class Search extends CometActor with CometListener {
   override def lowPriority : PartialFunction[Any, Unit] = {
     case (newRes: List[String], done) => {
       results = newRes
-      results.asInstanceOf[ 
       reRender(false)
     }
     case msg => {
