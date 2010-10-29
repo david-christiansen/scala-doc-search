@@ -40,22 +40,31 @@ object DataDumper {
             convert(t.inTemplate, seen) match {
               case Some(p: Package) => Left(p)
               case Some(c: Class) => Right(c)
-              case None => error("Could not convert parent: " + t.inTemplate.toString + "(" + t.inTemplate.getClass + ") of: "+ t.toString)
+              case None => error("IN TRAIT: Could not convert parent: " + t.inTemplate.toString + "(" + t.inTemplate.getClass + ") of: "+ t.toString + "\n\nResult of convert: "+ convert(t.inTemplate, seen))
             },
-            List(),
-            List(),
-            List(),
+            List(), //members
+            List(), //inherits
+            List(), //constructor
             t.typeParams.map(convertTypeParam),
-            ClassOrTrait.Trait
+            ClassOrTrait.Trait //Need to figure out if class or trait
           ))
         case x: model.RootPackage => Some(PathRoot)
         case p: model.Package =>
-          Some(NamedPackage(
+          Some(PackageOrObject(
             convert(p.inTemplate, seen) match {
               case Some(p) => p.asInstanceOf[Package] /* FIXME */
-              case None => error("Could not convert parent: " + p.inTemplate.toString + " of " + p.toString)
+              case None => error("IN PACKAGE: Could not convert parent: " + p.inTemplate.toString + " of " + p.toString)
             },
             p.name
+          ))
+        case o: model.Object =>
+          Some(PackageOrObject(
+            convert(o.inTemplate, seen) match {
+              case Some(o) => o.asInstanceOf[Package] /* FIXME */
+              case None => error("IN Object: Could not convert parent: " + o.inTemplate.toString + " of " + o.toString)
+            },
+            o.name,
+            List()
           ))
         case _ => None
       }

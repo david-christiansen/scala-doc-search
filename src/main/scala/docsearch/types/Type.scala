@@ -28,7 +28,7 @@ abstract sealed class Package extends SearchContainer {
 case object PathRoot extends Package {
   def path() = List(this)
 }
-case class NamedPackage(in: Package, name: String) extends Package {
+case class PackageOrObject(in: Package, name: String, members: List[Member] = Nil) extends Package {
   def path() = in.path ++ List(this)
 }
 
