@@ -41,7 +41,6 @@ abstract sealed class Kind {
   def --> (k: Kind) = new -->(this, k)
 }
 case object * extends Kind {
-
   override def toString = "*"
 }
 case class -->(from: Kind, to: Kind) extends Kind {
