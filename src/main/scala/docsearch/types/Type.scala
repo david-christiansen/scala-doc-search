@@ -23,15 +23,18 @@ case class Member(in: Type, typeParams: List[Kind], memType: QMemType, resultTyp
 abstract sealed class SearchContainer
 
 abstract sealed class Package extends SearchContainer {
-  def path(): List[Package]
+  def path(): List[SearchContainer]
 }
 case object PathRoot extends Package {
   def path() = List(this)
 }
-case class PackageOrObject(in: Package, name: String, members: List[Member] = Nil) extends Package {
+case class NamedPackage(in: Package, name: String) extends Package {
   def path() = in.path ++ List(this)
 }
 
+case class Object(in: SearchContainer, name: String, members: List[Member]) extends Package {
+  def path() = in.path ++ List(this)
+}
 
 
 abstract sealed class Kind {

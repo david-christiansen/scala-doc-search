@@ -50,7 +50,7 @@ object DataDumper {
           ))
         case x: model.RootPackage => Some(PathRoot)
         case p: model.Package =>
-          Some(PackageOrObject(
+          Some(NamedPackage(
             convert(p.inTemplate, seen) match {
               case Some(p) => p.asInstanceOf[Package] /* FIXME */
               case None => error("IN PACKAGE: Could not convert parent: " + p.inTemplate.toString + " of " + p.toString)
@@ -58,9 +58,9 @@ object DataDumper {
             p.name
           ))
         case o: model.Object =>
-          Some(PackageOrObject(
+          Some(Object(
             convert(o.inTemplate, seen) match {
-              case Some(o) => o.asInstanceOf[Package] /* FIXME */
+              case Some(o) => o
               case None => error("IN Object: Could not convert parent: " + o.inTemplate.toString + " of " + o.toString)
             },
             o.name,
