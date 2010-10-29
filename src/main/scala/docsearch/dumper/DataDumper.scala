@@ -3,11 +3,13 @@ package docsearch.dumper
 import scala.tools.nsc.doc.{model, Universe}
 import scala.collection.mutable
 
+import docsearch.types._
+
 object DataDumper {
   def generate(docModel: Universe) = {
     val rootPackage = docModel.rootPackage
     
-    val seen: mutable.Set[model.Entity] = mutable.Set.empty
+    val seen: mutable.Map[model.Entity, Option[SearchContainer]] = mutable.Map.empty
     val todo: mutable.Stack[model.Entity] = mutable.Stack(rootPackage)
     
     while (todo.length > 0) {
@@ -15,7 +17,7 @@ object DataDumper {
       println("Processing " + current.toString)
       for (child <- contents(current)) {
         if (!seen.contains(child)) todo.push(child)
-        seen += child
+        seen += child -> convert(child, seen)
       }
     }
   }
@@ -25,4 +27,45 @@ object DataDumper {
       case dte: model.DocTemplateEntity => dte.members
       case _ => Seq.empty
     }
+
+  def convert(entity: model.Entity, seen: mutable.Map[model.Entity, Option[SearchContainer]]): Option[SearchContainer] = {
+    if (seen contains entity) {
+      seen(entity)
+    }
+    else {
+      entity match {
+        case t: model.Trait => 
+          Some(Class(
+            t.name,
+            convert(t.inTemplate, seen) match {
+              case Some(p: Package) => Left(p)
+              case Some(c: Class) => Right(c)
+              case None => error("Could not convert parent: " + t.inTemplate.toString + "(" + t.inTemplate.getClass + ") of: "+ t.toString)
+            },
+            List(),
+            List(),
+            List(),
+            t.typeParams.map(convertTypeParam),
+            ClassOrTrait.Trait
+          ))
+        case x: model.RootPackage => Some(PathRoot)
+        case p: model.Package =>
+          Some(NamedPackage(
+            convert(p.inTemplate, seen) match {
+              case Some(p) => p.asInstanceOf[Package] /* FIXME */
+              case None => error("Could not convert parent: " + p.inTemplate.toString + " of " + p.toString)
+            },
+            p.name
+          ))
+        case _ => None
+      }
+    }
+  }
+
+  def convertTypeParam(t: model.TypeParam): (String, Kind) = {
+    /* FIXME FOR KINDS! */
+    val name = t.name
+    val kind = *
+    (name, kind)
+  }
 }
