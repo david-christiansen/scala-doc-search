@@ -63,9 +63,11 @@ object DataDumper {
   }
 
   def convertTypeParam(t: model.TypeParam): (String, Kind) = {
-    /* FIXME FOR KINDS! */
-    val name = t.name
-    val kind = *
-    (name, kind)
+    val parser = new TPParser
+    parser.parseParam(t.name) match {
+      case parser.Success(param: TypeParam, _) => (param.name, param.kind)
+      case _ => error("could not parse type parameter '" + t.name + "'")
+    }
   }
 }
+

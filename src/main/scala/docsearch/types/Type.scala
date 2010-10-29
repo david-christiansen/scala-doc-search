@@ -34,9 +34,16 @@ case class NamedPackage(in: Package, name: String) extends Package {
 
 
 
-abstract sealed class Kind
-case object * extends Kind
-case class -->(from: Kind, to: Kind, variance: Variance) extends Kind
+abstract sealed class Kind {
+  def --> (k: Kind) = new -->(this, k)
+}
+case object * extends Kind {
+
+  override def toString = "*"
+}
+case class -->(from: Kind, to: Kind) extends Kind {
+  override def toString = "(" + from.toString + " --> " + to.toString + ")"
+}
 
 abstract sealed class Type extends SearchContainer
 case class Tuple(elements: List[Type]) extends Type
