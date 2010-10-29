@@ -9,7 +9,7 @@ object DataDumper {
   def generate(docModel: Universe) = {
     val rootPackage = docModel.rootPackage
     
-    val seen: mutable.Map[model.Entity, Option[SearchContainer]] = mutable.Map.empty
+    val seen: mutable.Map[model.Entity, Option[Package]] = mutable.Map.empty
     val todo: mutable.Stack[model.Entity] = mutable.Stack(rootPackage)
     
     while (todo.length > 0) {
@@ -28,7 +28,7 @@ object DataDumper {
       case _ => Seq.empty
     }
 
-  def convert(entity: model.Entity, seen: mutable.Map[model.Entity, Option[SearchContainer]]): Option[SearchContainer] = {
+  def convert(entity: model.Entity, seen: mutable.Map[model.Entity, Option[Package]]): Option[Package] = {
     if (seen contains entity) {
       seen(entity)
     }
@@ -38,8 +38,7 @@ object DataDumper {
           Some(Class(
             t.name,
             convert(t.inTemplate, seen) match {
-              case Some(p: Package) => Left(p)
-              case Some(c: Class) => Right(c)
+              case Some(p) => p
               case None => error("IN TRAIT: Could not convert parent: " + t.inTemplate.toString + "(" + t.inTemplate.getClass + ") of: "+ t.toString + "\n\nResult of convert: "+ convert(t.inTemplate, seen))
             },
             List(), //members

@@ -7,7 +7,7 @@ import scala.util.parsing.input.CharArrayReader.EofCh
 import scala.util.parsing.combinator.lexical.{Lexical}
 import scala.util.parsing.combinator.syntactical.{TokenParsers}
 import scala.util.parsing.combinator.testing.Tester
-import QMemType._
+import docsearch.types.MemType._
 
 
 trait QueryTokens extends Tokens {
@@ -127,7 +127,7 @@ class QueryParser(val lexical: QueryLexer = new QueryLexer) extends TokenParsers
     elts: List[String] => QPath(elts)
   }
   
-  lazy val memType: PackratParser[QMemType] = elem("member type", {
+  lazy val memType: PackratParser[MemType] = elem("member type", {
     case lexical.Reserved(str) if (List("var", "val", "def") contains str) => true
     case _ => false 
   }) ^^ {
@@ -140,7 +140,7 @@ class QueryParser(val lexical: QueryLexer = new QueryLexer) extends TokenParsers
     case lexical.Id(x) => x
   }
   
-  lazy val memTypeNameArgs: PackratParser[(Option[QMemType], Option[String], List[List[QArg]])] = 
+  lazy val memTypeNameArgs: PackratParser[(Option[MemType], Option[String], List[List[QArg]])] = 
     opt(memType)~opt(name)~rep(argList) ^^ {
       case mt~n~al => (mt, n, al)
     }

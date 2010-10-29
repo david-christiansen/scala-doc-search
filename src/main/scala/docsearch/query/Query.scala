@@ -1,18 +1,11 @@
 package docsearch.query
 
-object QMemType extends Enumeration {
-  type QMemType = Value
-  val Def = Value("def")
-  val Val = Value("val")
-  val Var = Value("var")
-}
-
-import QMemType._
+import docsearch.types.MemType._
 
 case class Type(str: String)
 
 case class Query( path: Option[QPath], 
-                  memType: Option[QMemType],
+                  memType: Option[MemType],
                   name: Option[String],
                   args: List[List[QArg]],
                   resultType: Type)
