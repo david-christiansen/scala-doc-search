@@ -1,22 +1,15 @@
+/*
 package docsearch.types
 import docsearch.types.MemType._
 
-object Variance extends Enumeration {
-  type Variance = Value
-  val Covariant = Value("covariant")
-  val Contravariant = Value("contravariant")
-  val Invariant = Value("invariant")
-}
+
 
 object ClassOrTrait extends Enumeration {
   type ClassOrTrait = Value
   val Class = Value("class")
   val Trait = Value("trait")
 }
-import Variance._
 import ClassOrTrait._
-
-
 
 case class Arg(name: String, typ: Type)
 
@@ -44,7 +37,6 @@ case class Class(name: String,
   def path() = in.path ++ List(this)
 }
 
-
 abstract sealed class Kind {
   def --> (k: Kind) = new -->(this, k)
 }
@@ -62,4 +54,4 @@ case class Method(args: List[List[Arg]], res: Type) extends Type
 case class TypeVar(name: String) extends Type
 case class InstanceOf(type1: Class, typeParams: List[Type]) extends Type
 
-
+*/

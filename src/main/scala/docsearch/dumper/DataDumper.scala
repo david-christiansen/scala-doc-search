@@ -6,8 +6,8 @@ import scala.collection.mutable
 import docsearch.types._
 
 object DataDumper {
-  def generate(docModel: Universe) = {
-    val rootPackage = docModel.rootPackage
+  def generate(docModel: Universe) = {}
+/*    val rootPackage = docModel.rootPackage
     
     val seen: mutable.Map[model.Entity, Option[Package]] = mutable.Map.empty
     val todo: mutable.Stack[model.Entity] = mutable.Stack(rootPackage)
@@ -51,7 +51,7 @@ object DataDumper {
         case p: model.Package =>
           Some(NamedPackage(
             convert(p.inTemplate, seen) match {
-              case Some(p) => p.asInstanceOf[Package] /* FIXME */
+              case Some(p) => p.asInstanceOf[Package] // FIXME
               case None => error("IN PACKAGE: Could not convert parent: " + p.inTemplate.toString + " of " + p.toString)
             },
             p.name
@@ -77,5 +77,6 @@ object DataDumper {
       case _ => error("could not parse type parameter '" + t.name + "'")
     }
   }
+  */
 }
 

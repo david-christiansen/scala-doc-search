@@ -10,6 +10,8 @@ import sitemap._
 import Loc._
 import mapper._
 
+import docsearch.types._
+
 class Boot {
   def boot {
     if (!DB.jndiJdbcConnAvailable_?) {
@@ -40,5 +42,8 @@ class Boot {
     
     // Force the request to be UTF-8
     LiftRules.early.append(_.setCharacterEncoding("UTF-8"))
+    
+    //Schemify
+    Schemifier.schemify(true, Log.infoF _, Class, Member, TypeParam, Type, Arg, Kind, Package)
   }
 }

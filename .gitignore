@@ -3,3 +3,4 @@ lib_managed
 .ensime
 *#*#
 scala-src
+src/main/resources/props/default.props

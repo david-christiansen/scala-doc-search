@@ -3,14 +3,17 @@ package docsearch.dumper
 import scala.util.parsing.combinator._
 import scala.util.parsing.input.CharSequenceReader
 
+import net.liftweb.common.{Box,Full,Empty,Failure,ParamFailure}
+
 import docsearch.types._
+/*
 
 case class TypeParam(name: String, params: List[TypeParam]) {
   private[this] def paramKind(params: List[TypeParam]): Kind = params match {
     case Nil => *
     case p :: ps => p.kind --> paramKind(ps)
   } 
-
+  
   def kind(): Kind = paramKind(params)
 
   override def toString = name +
@@ -20,11 +23,20 @@ case class TypeParam(name: String, params: List[TypeParam]) {
     }) + 
     " : " + this.kind
 }
-
-class TPParser extends RegexParsers {
+*/
+class TPParser extends RegexParsers {  
   def id = "[a-zA-Z][a-zA-Z0-9_]*".r | "_"
   def param: Parser[TypeParam] = id~opt(('['~>rep1sep(param, ','))<~']') ^^ {
-    case name ~ params => TypeParam(name, params getOrElse List())
+    case name ~ params => {
+      println(params)
+      val kind: Kind = Kind.makeKind(params getOrElse List())
+      println(kind)
+      kind.save
+      println("After save of kind")
+      val tp: TypeParam = TypeParam.create.name(name).kind(kind)
+      tp.save
+      tp
+    }
   }
 
   /**

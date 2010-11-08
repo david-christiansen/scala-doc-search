@@ -1,4 +1,4 @@
-
+/*
 package docsearch.types
 
 object MemType extends Enumeration {
@@ -11,4 +11,4 @@ object MemType extends Enumeration {
 import MemType._
 
 case class Member(in: Package, typeParams: List[Kind], memType: MemType, resultType: Type, args: List[List[Arg]])
-
+*/

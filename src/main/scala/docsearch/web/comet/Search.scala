@@ -16,6 +16,7 @@ import net.liftweb.http.js.JE.Str
 
 import docsearch.search._
 import docsearch.query._
+import docsearch.dumper._
 
 class Search extends CometActor with CometListener {
   override def defaultPrefix = Full("search")
@@ -29,6 +30,8 @@ class Search extends CometActor with CometListener {
   private var results: List[String] = Nil
 
   private val parser = new QueryParser
+  
+  private val tpparser = new TPParser
 
   private def renderResults = {
     parser.parse(term, parser.query) match {
@@ -42,7 +45,7 @@ class Search extends CometActor with CometListener {
 
   def render = bind("search", 
                     "search" -> ajaxText(term, doSearch _),
-                    "debug" -> parsed, 
+                    "debug" -> typeParamParser, 
                     "next" -> a(doNext _, Text("Next >>")),
                     "prev" -> (if (from <= 0) Text("<< Prev") else a(doPrev _, Text("<< Prev"))),
                     "count" -> ajaxSelectObj[Int](1 to 5 map (x => (x * 10) -> (x * 10).toString), Full(count), setCount _),
@@ -59,6 +62,13 @@ class Search extends CometActor with CometListener {
       results = List("failure", msg toString)
       reRender(false)
     }
+  }
+
+  private def typeParamParser() = {
+    val res = tpparser.parse(term, tpparser.param)
+    <dl>
+      <dt>res.toString</dt>
+    </dl>
   }
 
   private def parsed() = {

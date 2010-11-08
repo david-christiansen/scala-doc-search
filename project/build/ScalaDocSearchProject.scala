@@ -43,5 +43,5 @@ class ScalaDocSearchProject(info: ProjectInfo) extends DefaultWebProject(info) {
     "com.h2database" % "h2" % "1.2.138"
   ) ++ super.libraryDependencies
 
-
+  val lift_postgresql = "postgresql" % "postgresql" % "8.4-701.jdbc4"
 }
