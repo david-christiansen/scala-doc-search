@@ -3,36 +3,24 @@ package docsearch.dumper
 import scala.util.parsing.combinator._
 import scala.util.parsing.input.CharSequenceReader
 
-import net.liftweb.common.{Box,Full,Empty,Failure,ParamFailure}
-
 import docsearch.types._
-/*
 
-case class TypeParam(name: String, params: List[TypeParam]) {
-  private[this] def paramKind(params: List[TypeParam]): Kind = params match {
-    case Nil => *
-    case p :: ps => p.kind --> paramKind(ps)
-  } 
-  
-  def kind(): Kind = paramKind(params)
+import net.liftweb._
+import util._
+import Helpers._
 
-  override def toString = name +
-    (params match {
-      case Nil => ""
-      case ps => "[" + ps.mkString(",") + "]"
-    }) + 
-    " : " + this.kind
-}
-*/
+import common._
+import http._
+import sitemap._
+import Loc._
+import mapper._
+
 class TPParser extends RegexParsers {  
   def id = "[a-zA-Z][a-zA-Z0-9_]*".r | "_"
   def param: Parser[TypeParam] = id~opt(('['~>rep1sep(param, ','))<~']') ^^ {
     case name ~ params => {
-      println(params)
       val kind: Kind = Kind.makeKind(params getOrElse List())
-      println(kind)
-      kind.save
-      println("After save of kind")
+      println("Kind:" + kind)
       val tp: TypeParam = TypeParam.create.name(name).kind(kind)
       tp.save
       tp
@@ -54,9 +42,18 @@ object ParamParserTest extends TPParser with Application {
     print("------PARAM PARSER> ")
     val input = Console.readLine()
     if (input != "q") {
-      println(parse(input, param))
+      parse(input, param)
       test()
     }
+  }
+  if (!DB.jndiJdbcConnAvailable_?) {
+    val vendor =
+      new StandardDBVendor(Props.get("db.driver") openOr "org.h2.Driver",
+                           Props.get("db.url") openOr
+                           "jdbc:h2:lift_proto.db;AUTO_SERVER=TRUE",
+                           Props.get("db.user"), Props.get("db.password"))
+
+    DB.defineConnectionManager(DefaultConnectionIdentifier, vendor)
   }
   test()
 }

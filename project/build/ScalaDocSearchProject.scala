@@ -12,7 +12,7 @@ class ScalaDocSearchProject(info: ProjectInfo) extends DefaultWebProject(info) {
 
   override def compileOptions = super.compileOptions ++ Seq(Unchecked)
 
-  override def runClasspath = super.runClasspath +++ compileClasspath
+  override def runClasspath = super.runClasspath +++ compileClasspath +++ ("lib_managed"/ "scala_2.8.0" / "lib" / "scala-compiler.jar")
 
   /* BEGIN COMPUTING CLASSPATH AND ARGS FOR DUMPER */
   val dumperClassPath = runClasspath.get.map(_.absolutePath).mkString(":") + ":" +
@@ -44,4 +44,5 @@ class ScalaDocSearchProject(info: ProjectInfo) extends DefaultWebProject(info) {
   ) ++ super.libraryDependencies
 
   val lift_postgresql = "postgresql" % "postgresql" % "8.4-701.jdbc4"
+  
 }
