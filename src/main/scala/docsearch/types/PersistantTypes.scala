@@ -56,17 +56,19 @@ class Class extends LongKeyedMapper[Class] with IdPK {
   object constructor extends MappedLongForeignKey(this, Arg)
 }
 
-object Class extends Class with LongKeyedMetaMapper[Class] {}
+object Class extends Class with LongKeyedMetaMapper[Class] 
 
 //Type Param
 class TypeParam extends LongKeyedMapper[TypeParam] with IdPK {
   def getSingleton = TypeParam
   object name extends MappedString(this, 100)
   object order extends MappedInt(this)
-  object kind extends MappedLongForeignKey(this, Kind)
+  object kind extends MappedLongForeignKey(this, Kind){
+    //override def defaultValue: Kind = Kind.typ
+  }
 }
 
-object TypeParam extends TypeParam with LongKeyedMetaMapper[TypeParam] {}
+object TypeParam extends TypeParam with LongKeyedMetaMapper[TypeParam] 
 
 //Type
 class Type extends LongKeyedMapper[Type] with IdPK {
@@ -80,7 +82,7 @@ class Type extends LongKeyedMapper[Type] with IdPK {
   
 }
 
-object Type extends Type with LongKeyedMetaMapper[Type] {}
+object Type extends Type with LongKeyedMetaMapper[Type] 
 
 //Arg
 class Arg extends LongKeyedMapper[Arg] with IdPK {
@@ -89,54 +91,32 @@ class Arg extends LongKeyedMapper[Arg] with IdPK {
   object typ extends MappedLongForeignKey(this, Type)
 }
 
-object Arg extends Arg with LongKeyedMetaMapper[Arg] {}
+object Arg extends Arg with LongKeyedMetaMapper[Arg] 
 
 //Kind
 class Kind extends LongKeyedMapper[Kind] with IdPK {
-
-  override def toString = {
-    from.obj match {
-      case Full(Kind) =>	to.obj match {
-        case Full(Kind) => "(" + from.toString + " --> " + to.toString + ")"
-        case Empty => "(" + from.toString + " --> *)" 
-      }
-      case Empty => to.obj match {
-        case Full(Kind) => "(* --> " + to.toString + ")"
-        case Empty => "*"
-      }
-    }
+  override def toString: String = {
+    val f = from.obj openOr "*"
+    val t = from.obj openOr "*"
+    if (f == "*" && t == "*") return "*"
+    "(" + f.toString + " --> " + t.toString + ")"
   }
+  
   def getSingleton = Kind
   object from extends MappedLongForeignKey(this,Kind){
-    override def toString = {
-      this.obj match{
-        case Empty => "*"
-        case Full(x) => x.toString
-      }
-    }
+    override def toString = this.obj.openOr("*").toString
   }
   object to extends MappedLongForeignKey(this,Kind){
-    override def toString = {
-      this.obj match{
-        case Empty => "*"
-        case Full(x) => x.toString
-      }
-    }
+    override def toString = this.obj.openOr("*").toString
   }
 }
 
 object Kind extends Kind with LongKeyedMetaMapper[Kind] {
-  override def toString = {
-    from.obj match {
-      case Full(Kind) =>	to.obj match {
-        case Full(Kind) => "(" + from.toString + " --> " + to.toString + ")"
-        case Empty => "(" + from.toString + " --> *)" 
-      }
-      case Empty => to.obj match {
-        case Full(Kind) => "(* --> " + to.toString + ")"
-        case Empty => "*"
-      }
-    }
+  override def toString: String = {
+    val f = from.obj openOr "*"
+    val t = from.obj openOr "*"
+    if (f == "*" && t == "*") return "*"
+    "(" + f.toString + " --> " + t.toString + ")"
   }
   
   val typ: Kind = Kind.from(Empty).to(Empty) //nullary type constructor

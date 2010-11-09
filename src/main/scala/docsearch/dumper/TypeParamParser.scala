@@ -20,6 +20,7 @@ class TPParser extends RegexParsers {
   def param: Parser[TypeParam] = id~opt(('['~>rep1sep(param, ','))<~']') ^^ {
     case name ~ params => {
       val kind: Kind = Kind.makeKind(params getOrElse List())
+      println(params)
       println("Kind:" + kind)
       val tp: TypeParam = TypeParam.create.name(name).kind(kind)
       tp.save
