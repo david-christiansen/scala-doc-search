@@ -1,4 +1,1 @@
-db.driver=org.postgresql.Driver
-db.url=jdbc:postgresql:scaladocsearch
-db.user=adam
-db.password=1234
+

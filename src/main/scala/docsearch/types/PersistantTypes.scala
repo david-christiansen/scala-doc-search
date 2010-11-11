@@ -66,6 +66,11 @@ class TypeParam extends LongKeyedMapper[TypeParam] with IdPK {
   object kind extends MappedLongForeignKey(this, Kind){
     //override def defaultValue: Kind = Kind.typ
   }
+  
+  override def toString() = name.is + ":" + (kind.obj match {
+    case Full(k) => k.toString
+    case _ => "error finding kind"
+  })
 }
 
 object TypeParam extends TypeParam with LongKeyedMetaMapper[TypeParam] 
@@ -95,38 +100,48 @@ object Arg extends Arg with LongKeyedMetaMapper[Arg]
 
 //Kind
 class Kind extends LongKeyedMapper[Kind] with IdPK {
-  override def toString: String = {
-    val f = from.obj openOr "*"
-    val t = from.obj openOr "*"
-    if (f == "*" && t == "*") return "*"
-    "(" + f.toString + " --> " + t.toString + ")"
-  }
-  
   def getSingleton = Kind
-  object from extends MappedLongForeignKey(this,Kind){
-    override def toString = this.obj.openOr("*").toString
+
+  object from extends MappedLongForeignKey(this,Kind)
+  object to extends MappedLongForeignKey(this,Kind)
+
+  override def toString() = {
+    if (!this.isValid) "errKind"
+    else if (this.isNullary) "*"
+    else {
+      val fromK = this.from.obj.open_!
+      val toK = this.to.obj.open_!
+      (if (fromK.isNullary) fromK.toString else "(" + fromK.toString + ")") +
+      " -> " +
+      (if (toK.isNullary) toK.toString else "(" + toK.toString + ")")
+    }
   }
-  object to extends MappedLongForeignKey(this,Kind){
-    override def toString = this.obj.openOr("*").toString
-  }
+
+  def isValid(): Boolean = 
+    (this.from.obj.isEmpty == this.to.obj.isEmpty)
+
+  def isNullary(): Boolean =
+    (this.from.obj.isEmpty && this.to.obj.isEmpty)
 }
 
 object Kind extends Kind with LongKeyedMetaMapper[Kind] {
-  override def toString: String = {
-    val f = from.obj openOr "*"
-    val t = from.obj openOr "*"
-    if (f == "*" && t == "*") return "*"
-    "(" + f.toString + " --> " + t.toString + ")"
+  // kind *
+  def nullary() = 
+    Kind.find(By(Kind.from, Empty), By(Kind.to, Empty)) openOr Kind.create.saveMe
+  // kind _ --> _
+  def arrow(f: Kind, t: Kind): Kind = {
+    require(f.isValid && t.isValid)
+    Kind.find(By(Kind.from, f), By(Kind.to, t)).openOr(
+      Kind.create.to(t).from(f).saveMe
+    )
   }
-  
-  val typ: Kind = Kind.from(Empty).to(Empty) //nullary type constructor
-  
-  def makeKind(params: List[TypeParam]): Kind = {
-    params match {
-      case Nil => typ
-      case p :: ps => Kind.create.from(makeKind(Nil)).to(makeKind(ps))
+
+  // Construct the kind of a type constructor based on its parameters
+  def getKind(tps: List[TypeParam]): Kind =
+    tps match {
+      case Nil     => nullary
+      case p :: ps => arrow(p.kind.obj.open_!, getKind(ps))
     }
-  }
 }
 
 //Member

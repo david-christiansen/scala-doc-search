@@ -19,7 +19,7 @@ class TPParser extends RegexParsers {
   def id = "[a-zA-Z][a-zA-Z0-9_]*".r | "_"
   def param: Parser[TypeParam] = id~opt(('['~>rep1sep(param, ','))<~']') ^^ {
     case name ~ params => {
-      val kind: Kind = Kind.makeKind(params getOrElse List())
+      val kind: Kind = Kind.getKind(params getOrElse List())
       println(params)
       println("Kind:" + kind)
       val tp: TypeParam = TypeParam.create.name(name).kind(kind)
@@ -39,11 +39,15 @@ class TPParser extends RegexParsers {
 }
 
 object ParamParserTest extends TPParser with Application {
+  import bootstrap.liftweb.Boot
+
+  (new Boot).boot
+
   def test(): Unit = {
     print("------PARAM PARSER> ")
     val input = Console.readLine()
     if (input != "q") {
-      parse(input, param)
+      println(parse(input, param))
       test()
     }
   }
