@@ -46,16 +46,14 @@ import MemType._
 //Class
 class Class extends LongKeyedMapper[Class] with IdPK with OneToMany[Long, Class] with ManyToMany {
   def getSingleton = Class
+  object entityToString extends MappedString(this, 200)
   object name extends MappedString(this, 100)
-
   object in extends MappedLongForeignKey(this, Class)
   object memberClasses extends MappedOneToMany(Class, Class.in, OrderBy(Class.name, Ascending))
-  
   object members extends MappedOneToMany(Member, Member.in, OrderBy(Member.id, Ascending))
   object typ extends MappedEnum[Class, TypeEnum.type](this, TypeEnum)
-  object children extends MappedManyToMany(Inheritance, Inheritance.children, Inheritance.parents, Class) //can be more than 1
+  object children extends MappedManyToMany(Inheritance, Inheritance.children, Inheritance.parents, Class) 
   object parents extends MappedManyToMany(Inheritance, Inheritance.parents, Inheritance.children, Class)
-  //object tags extends MappedManyToMany(PostTags, PostTags.post, PostTags.tag, Tag)
   object typeParams extends MappedManyToMany(ClassTypeParam, ClassTypeParam.classes, ClassTypeParam.typeParams, TypeParam)
   object constructor extends MappedLongForeignKey(this, Arg)
 
@@ -67,7 +65,18 @@ class Class extends LongKeyedMapper[Class] with IdPK with OneToMany[Long, Class]
   }
 }
 
-object Class extends Class with LongKeyedMetaMapper[Class] 
+object Class extends Class with LongKeyedMetaMapper[Class] {
+  def createClass = ""
+  def createTrait = ""
+  def createObject = ""
+  def createRootPackage() = {
+    Class.find(By(Class.entityToString, "root")) openOr Class.create.entityToString("root").name("root").saveMe
+    }
+  def createPackage(entityToString: String, name: String, in: String, memberClasses: List[String]) = {
+    Class.find(By(Class.entityToString, entityToString)) openOr Class.create.entityToString(entityToString).name(name).in(
+    Class.find(By(Class.name, in)) openOr Class.create.entityToString("NOT SURE YET").name(in).saveMe).saveMe
+    }
+}
 
 //Inheritance middle table
 class Inheritance extends Mapper[Inheritance] {
@@ -140,17 +149,13 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
   
   
   //TODO validation
-  def isTuple: Boolean = {
-    if (res.obj.isEmpty 
-        && funcArgs.length == 0 
-        && methodArgs.length == 0 
-        && elements.length > 0
-        && typeParam.length == 0
-        && instanceOf.obj.isEmpty){
-      true
-    }
-    else false
-  }
+  def isTuple: Boolean = 
+    res.obj.isEmpty &&
+    funcArgs.length == 0 &&
+    methodArgs.length == 0 &&
+    elements.length > 0 &&
+    typeParam.length == 0 &&
+    instanceOf.obj.isEmpty
   def isFunc = ""
   def isMethod = ""
   def isTypeVar = ""

@@ -19,7 +19,7 @@ object DataDumper {
 
     while (todo.length > 0) {
       val current = todo.pop()
-      println("Processing " + current.toString)
+      //println("Processing " + current.toString)
       for (child <- contents(current)) {
         if (!seen.contains(child)) todo.push(child)
         seen += child 
@@ -35,9 +35,9 @@ object DataDumper {
     }
 
   def convert(entity: model.Entity): Unit = {
-    println("Processing " + entity.toString)
+    //println("Processing " + entity.toString)
     entity match {
-      case t: model.Trait => {
+      case t: model.Trait => ()/*{
         var newT = Class.create.name(t.name).saveMe
         for ((p, i) <- t.typeParams.zip(0 to t.typeParams.length)) {
           val converted = convertTypeParam(p)
@@ -45,13 +45,14 @@ object DataDumper {
           converted.save
           println(converted)
         }
-      }
-      case x: model.RootPackage =>
-        Class.create.name("_root_").typ(TypeEnum.Package).save
-      case p: model.Package =>
-        Class.create.name(p.name).typ(TypeEnum.Package).save
-      case o: model.Object =>
-        Class.create.name(o.name).typ(TypeEnum.Object).save
+      }*/
+      //def createPackage(entityToString: String, name: String, in: String, memberClasses: String)
+      
+      case x: model.RootPackage => {println("Root package found: " + x.toString); Class.createRootPackage()}
+      case p: model.Package =>{ println("Package found: " + p.toString)
+        Class.createPackage(p.toString, p.name, p.inTemplate.name, p.members.map(x => x.name))}
+      case o: model.Object => ()
+        //Class.create.name(o.name).typ(TypeEnum.Object).save
       case _ => ()
     }
   }

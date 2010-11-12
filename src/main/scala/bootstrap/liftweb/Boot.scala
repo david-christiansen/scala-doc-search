@@ -44,6 +44,6 @@ class Boot {
     LiftRules.early.append(_.setCharacterEncoding("UTF-8"))
     
     //Schemify
-    Schemifier.schemify(true, Log.infoF _, Class, Member, TypeParam, Type, Arg, Kind, ClassTypeParam)
+    Schemifier.schemify(true, Log.infoF _, Class, Member, TypeParam, Type, Arg, Kind, ClassTypeParam, Inheritance, TypeArg)
   }
 }
