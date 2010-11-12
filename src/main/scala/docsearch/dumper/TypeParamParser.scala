@@ -25,7 +25,7 @@ class TPParser extends RegexParsers {
       println("Kind:" + kind)
       val tp: TypeParam = TypeParam.create.name(name).kind(kind)
       for ((p, i) <- realParams.zip(Range(0, realParams.length))) {
-        p.order(i).save()
+        p.order(i).save
         tp.params += p
       }
       tp.saveMe
