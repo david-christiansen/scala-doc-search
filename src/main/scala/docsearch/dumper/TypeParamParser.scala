@@ -19,12 +19,16 @@ class TPParser extends RegexParsers {
   def id = "[a-zA-Z][a-zA-Z0-9_]*".r | "_"
   def param: Parser[TypeParam] = id~opt(('['~>rep1sep(param, ','))<~']') ^^ {
     case name ~ params => {
-      val kind: Kind = Kind.getKind(params getOrElse List())
+      val realParams: List[TypeParam] = params getOrElse List()
+      val kind: Kind = Kind.getKind(realParams)
       println(params)
       println("Kind:" + kind)
       val tp: TypeParam = TypeParam.create.name(name).kind(kind)
-      tp.save
-      tp
+      for ((p, i) <- realParams.zip(Range(0, realParams.length))) {
+        p.order(i).save()
+        tp.params += p
+      }
+      tp.saveMe
     }
   }
 
