@@ -80,20 +80,39 @@ object ClassTypeParam extends ClassTypeParam with MetaMapper[ClassTypeParam]
 
 
 //Type Param
-class TypeParam extends LongKeyedMapper[TypeParam] with IdPK with ManyToMany {
+class TypeParam extends LongKeyedMapper[TypeParam] with IdPK with OneToMany[Long, TypeParam] with ManyToMany {
   def getSingleton = TypeParam
   object name extends MappedString(this, 100)
   object order extends MappedInt(this)
   object kind extends MappedLongForeignKey(this, Kind)
   object classes extends MappedManyToMany(ClassTypeParam, ClassTypeParam.typeParams, ClassTypeParam.classes, Class)
+  object params extends MappedOneToMany(TypeParam, TypeParam.parent, OrderBy(TypeParam.order, Ascending))
+  object parent extends MappedLongForeignKey(this, TypeParam) // NULL if top-level
   
-  override def toString() = name.is + ":" + (kind.obj match {
-    case Full(k) => k.toString
-    case _ => "error finding kind"
-  })
+  def isTop: Boolean = {
+    this.parent.obj match {
+      case Full(_) => false
+      case _ => true
+    }
+  }
+  
+  override def toString() = {
+    name.is +
+    (this.params.all match {
+      case Nil => ""
+      case ps => "[" + ps.map(_.toString).mkString(",") + "]" 
+    }) +
+    (if (this.isTop) {
+      " : " + 
+      (kind.obj match {
+        case Full(k) => k.toString
+        case _ => "error finding kind"
+      })
+    } else "")
+  }
 }
 
-object TypeParam extends TypeParam with LongKeyedMetaMapper[TypeParam] 
+object TypeParam extends TypeParam with LongKeyedMetaMapper[TypeParam]
 
 //Type
 class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] {
