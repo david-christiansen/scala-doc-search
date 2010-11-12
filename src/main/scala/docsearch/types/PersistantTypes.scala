@@ -88,6 +88,7 @@ class TypeParam extends LongKeyedMapper[TypeParam] with IdPK with OneToMany[Long
   object classes extends MappedManyToMany(ClassTypeParam, ClassTypeParam.typeParams, ClassTypeParam.classes, Class)
   object params extends MappedOneToMany(TypeParam, TypeParam.parent, OrderBy(TypeParam.order, Ascending))
   object parent extends MappedLongForeignKey(this, TypeParam) // NULL if top-level
+  object typ extends MappedLongForeignKey(this, Type)
   
   def isTop: Boolean = {
     this.parent.obj match {
@@ -115,32 +116,48 @@ class TypeParam extends LongKeyedMapper[TypeParam] with IdPK with OneToMany[Long
 object TypeParam extends TypeParam with LongKeyedMetaMapper[TypeParam]
 
 //Type
-class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] {
+class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] with ManyToMany {
   def getSingleton = Type
   object typeType extends MappedEnum[Type, TypeType.type](this, TypeType) // Type of Type
-  object name extends MappedString(this, 100)             //base case
-  object res extends MappedLongForeignKey(this, Type)     //method or function
-  object args extends MappedLongForeignKey(this, Arg) //Methods and functions
-  object elements extends MappedLongForeignKey(this, Type) //tuples
-  object typeParam extends MappedLongForeignKey(this, TypeParam)  //Instance of 
-  object type1 extends MappedLongForeignKey(this, Class) //Instance of
+  object name extends MappedString(this, 100)
+  object res extends MappedLongForeignKey(this, Type)     //method or function   
+  object funcArgs extends MappedManyToMany(TypeArg, TypeArg.types, TypeArg.args, Arg) //list of args
+  
+  //FIXME was getting a weird error with this
+  //object methodArgs extends MappedOneToMany(Type, Type.funcArgs, OrderBy(Type.id, Ascending)) //Methods (list of funcArgs) 
+  
+  object elements extends MappedOneToMany(Type, Type.elemFK, OrderBy(Type.id, Ascending)) //tuples
+  object elemFK extends MappedLongForeignKey(this, Type)
+  
+  //FIXME was also getting tired and commented this out because there were errors
+  //object typeParam extends MappedOneToMany(TypeParam, TypeParam.typ, OrderBy(Type.id, Ascending))  //Instance of 
+  object instanceOf extends MappedLongForeignKey(this, Class) //Instance of
   
   
-  //validation
-  def tuple = ""
-  def func = ""
-  def method = ""
-  def typeVar = ""
-  def instanceOf = ""
+  //TODO validation
+  def isTuple = ""
+  def isFunc = ""
+  def isMethod = ""
+  def isTypeVar = ""
+  def isInstanceOf = ""
 }
 
 object Type extends Type with LongKeyedMetaMapper[Type] 
 
+//TypeArg middle table
+class TypeArg extends Mapper[TypeArg]{
+  def getSingleton = TypeArg
+  object types extends MappedLongForeignKey(this, Type)
+  object args extends MappedLongForeignKey(this, Arg)
+}
+
+object TypeArg extends TypeArg with MetaMapper[TypeArg]
+
 //Arg
-class Arg extends LongKeyedMapper[Arg] with IdPK {
+class Arg extends LongKeyedMapper[Arg] with IdPK with ManyToMany{
   def getSingleton = Arg
   object name extends MappedString(this, 100)
-  object typ extends MappedLongForeignKey(this, Type)
+  object typ extends MappedManyToMany(TypeArg, TypeArg.args, TypeArg.types, Type)
   object member extends MappedLongForeignKey(this, Member)
 }
 
