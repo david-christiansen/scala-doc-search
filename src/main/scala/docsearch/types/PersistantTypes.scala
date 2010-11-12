@@ -44,28 +44,48 @@ object MemType extends Enumeration {
 import MemType._
 
 //Class
-class Class extends LongKeyedMapper[Class] with IdPK {
+class Class extends LongKeyedMapper[Class] with IdPK with OneToMany[Long, Class] with ManyToMany {
   def getSingleton = Class
   object name extends MappedString(this, 100)
   object in extends MappedLongForeignKey(this, Package)
-  object parent extends MappedLongForeignKey(this, Class)
-  //members: query members to see who is in this class?
+  
+  object members extends MappedOneToMany(Member, Member.in, OrderBy(Member.id, Ascending))
   object typ extends MappedEnum[Class, TypeEnum.type](this, TypeEnum)
-  object inherits extends MappedLongForeignKey(this, Class) //can be more than 1
-  object typeParam extends MappedLongForeignKey(this, TypeParam)
+  object children extends MappedManyToMany(Inheritance, Inheritance.children, Inheritance.parents, Class) //can be more than 1
+  object parents extends MappedManyToMany(Inheritance, Inheritance.parents, Inheritance.children, Class)
+  //object tags extends MappedManyToMany(PostTags, PostTags.post, PostTags.tag, Tag)
+  object typeParams extends MappedManyToMany(ClassTypeParam, ClassTypeParam.classes, ClassTypeParam.typeParams, TypeParam)
   object constructor extends MappedLongForeignKey(this, Arg)
 }
 
 object Class extends Class with LongKeyedMetaMapper[Class] 
 
+//Inheritance middle table
+class Inheritance extends Mapper[Inheritance] {
+  def getSingleton = Inheritance  
+  object children extends MappedLongForeignKey(this, Class)
+  object parents extends MappedLongForeignKey(this, Class)
+}
+
+object Inheritance extends Inheritance with MetaMapper[Inheritance]
+
+//Class Type Param middle table
+class ClassTypeParam extends Mapper[ClassTypeParam] {
+  def getSingleton = ClassTypeParam  
+  object classes extends MappedLongForeignKey(this, Class)
+  object typeParams extends MappedLongForeignKey(this, TypeParam)
+}
+
+object ClassTypeParam extends ClassTypeParam with MetaMapper[ClassTypeParam]
+
+
 //Type Param
-class TypeParam extends LongKeyedMapper[TypeParam] with IdPK {
+class TypeParam extends LongKeyedMapper[TypeParam] with IdPK with ManyToMany {
   def getSingleton = TypeParam
   object name extends MappedString(this, 100)
   object order extends MappedInt(this)
-  object kind extends MappedLongForeignKey(this, Kind){
-    //override def defaultValue: Kind = Kind.typ
-  }
+  object kind extends MappedLongForeignKey(this, Kind)
+  object classes extends MappedManyToMany(ClassTypeParam, ClassTypeParam.typeParams, ClassTypeParam.classes, Class)
   
   override def toString() = name.is + ":" + (kind.obj match {
     case Full(k) => k.toString
@@ -76,15 +96,23 @@ class TypeParam extends LongKeyedMapper[TypeParam] with IdPK {
 object TypeParam extends TypeParam with LongKeyedMetaMapper[TypeParam] 
 
 //Type
-class Type extends LongKeyedMapper[Type] with IdPK {
+class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] {
   def getSingleton = Type
   object typeType extends MappedEnum[Type, TypeType.type](this, TypeType) // Type of Type
   object name extends MappedString(this, 100)             //base case
   object res extends MappedLongForeignKey(this, Type)     //method or function
-  object argsOrElements extends MappedLongForeignKey(this, Arg) //Methods and functions and tuples
+  object args extends MappedLongForeignKey(this, Arg) //Methods and functions
+  object elements extends MappedLongForeignKey(this, Type) //tuples
   object typeParam extends MappedLongForeignKey(this, TypeParam)  //Instance of 
   object type1 extends MappedLongForeignKey(this, Class) //Instance of
   
+  
+  //validation
+  def tuple = ""
+  def func = ""
+  def method = ""
+  def typeVar = ""
+  def instanceOf = ""
 }
 
 object Type extends Type with LongKeyedMetaMapper[Type] 
@@ -94,6 +122,7 @@ class Arg extends LongKeyedMapper[Arg] with IdPK {
   def getSingleton = Arg
   object name extends MappedString(this, 100)
   object typ extends MappedLongForeignKey(this, Type)
+  object member extends MappedLongForeignKey(this, Member)
 }
 
 object Arg extends Arg with LongKeyedMetaMapper[Arg] 
@@ -145,21 +174,22 @@ object Kind extends Kind with LongKeyedMetaMapper[Kind] {
 }
 
 //Member
-class Member extends LongKeyedMapper[Member] with IdPK {
+class Member extends LongKeyedMapper[Member] with IdPK with OneToMany[Long, Member]{
   def getSingleton = Member
   object in extends MappedLongForeignKey(this, Class)
   object typeParams extends MappedLongForeignKey(this, TypeParam)
   object memType extends MappedEnum[Member,MemType.type](this, MemType)
   object resultType extends MappedLongForeignKey(this, Type)
-  object args extends MappedLongForeignKey(this, Arg) //one to many 
+  object args extends MappedOneToMany(Arg, Arg.member, OrderBy(Arg.id, Ascending)) //one to many 
+  
 }
 
 object Member extends Member with LongKeyedMetaMapper[Member] 
 
 //Package
 class Package extends LongKeyedMapper[Package] with IdPK {
-  def getSingleton = Package
+  def getSingleton = Package  
+  object in extends MappedLongForeignKey(this, Package)
 }
 
-object Package extends Package with LongKeyedMetaMapper[Package] 
-
+object Package extends Package with LongKeyedMetaMapper[Package]
