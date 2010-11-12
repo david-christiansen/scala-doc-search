@@ -119,23 +119,29 @@ object TypeParam extends TypeParam with LongKeyedMetaMapper[TypeParam]
 class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] with ManyToMany {
   def getSingleton = Type
   object typeType extends MappedEnum[Type, TypeType.type](this, TypeType) // Type of Type
-  object name extends MappedString(this, 100)
+  object name extends MappedString(this, 100)             //typeVar
   object res extends MappedLongForeignKey(this, Type)     //method or function   
-  object funcArgs extends MappedManyToMany(TypeArg, TypeArg.types, TypeArg.args, Arg) //list of args
+  object funcArgs extends MappedOneToMany(Arg, Arg.typ, OrderBy(Arg.id, Ascending)) //list of args
+  object methodArgs extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.id, Ascending)) //Methods (list of funcArgs)   
   
-  //FIXME was getting a weird error with this
-  //object methodArgs extends MappedOneToMany(Type, Type.funcArgs, OrderBy(Type.id, Ascending)) //Methods (list of funcArgs) 
-  
-  object elements extends MappedOneToMany(Type, Type.elemFK, OrderBy(Type.id, Ascending)) //tuples
-  object elemFK extends MappedLongForeignKey(this, Type)
-  
-  //FIXME was also getting tired and commented this out because there were errors
-  //object typeParam extends MappedOneToMany(TypeParam, TypeParam.typ, OrderBy(Type.id, Ascending))  //Instance of 
+  object elements extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.id, Ascending)) //tuples
+  object typeFK extends MappedLongForeignKey(this, Type) //foreign key for self referencing   
+  object typeParam extends MappedOneToMany(TypeParam, TypeParam.typ, OrderBy(TypeParam.id, Ascending))  //Instance of 
   object instanceOf extends MappedLongForeignKey(this, Class) //Instance of
   
   
   //TODO validation
-  def isTuple = ""
+  def isTuple: Boolean = {
+    if (res.obj.isEmpty 
+        && funcArgs.length == 0 
+        && methodArgs.length == 0 
+        && elements.length > 0
+        && typeParam.length == 0
+        && instanceOf.obj.isEmpty){
+      true
+    }
+    else false
+  }
   def isFunc = ""
   def isMethod = ""
   def isTypeVar = ""
@@ -143,6 +149,7 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
 }
 
 object Type extends Type with LongKeyedMetaMapper[Type] 
+
 
 //TypeArg middle table
 class TypeArg extends Mapper[TypeArg]{
@@ -157,7 +164,7 @@ object TypeArg extends TypeArg with MetaMapper[TypeArg]
 class Arg extends LongKeyedMapper[Arg] with IdPK with ManyToMany{
   def getSingleton = Arg
   object name extends MappedString(this, 100)
-  object typ extends MappedManyToMany(TypeArg, TypeArg.args, TypeArg.types, Type)
+  object typ extends MappedLongForeignKey(this, Type)
   object member extends MappedLongForeignKey(this, Member)
 }
 
