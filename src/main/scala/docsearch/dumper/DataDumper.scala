@@ -6,19 +6,25 @@ import scala.collection.mutable
 import docsearch.types._
 
 object DataDumper {
-  def generate(docModel: Universe) = {}
-/*    val rootPackage = docModel.rootPackage
+  import bootstrap.liftweb.Boot
+  (new Boot).boot
+
+  val seen: mutable.Set[model.Entity] = mutable.Set.empty
+
+
+  def generate(docModel: Universe) = {
+    val rootPackage = docModel.rootPackage
     
-    val seen: mutable.Map[model.Entity, Option[Package]] = mutable.Map.empty
     val todo: mutable.Stack[model.Entity] = mutable.Stack(rootPackage)
-    
+
     while (todo.length > 0) {
       val current = todo.pop()
       println("Processing " + current.toString)
       for (child <- contents(current)) {
         if (!seen.contains(child)) todo.push(child)
-        seen += child -> convert(child, seen)
+        seen += child 
       }
+      convert(current)
     }
   }
 
@@ -28,55 +34,35 @@ object DataDumper {
       case _ => Seq.empty
     }
 
-  def convert(entity: model.Entity, seen: mutable.Map[model.Entity, Option[Package]]): Option[Package] = {
-    if (seen contains entity) {
-      seen(entity)
-    }
-    else {
-      entity match {
-        case t: model.Trait => 
-          Some(Class(
-            t.name,
-            convert(t.inTemplate, seen) match {
-              case Some(p) => p
-              case None => error("IN TRAIT: Could not convert parent: " + t.inTemplate.toString + "(" + t.inTemplate.getClass + ") of: "+ t.toString + "\n\nResult of convert: "+ convert(t.inTemplate, seen))
-            },
-            List(), //members
-            List(), //inherits
-            List(), //constructor
-            t.typeParams.map(convertTypeParam),
-            ClassOrTrait.Trait //Need to figure out if class or trait
-          ))
-        case x: model.RootPackage => Some(PathRoot)
-        case p: model.Package =>
-          Some(NamedPackage(
-            convert(p.inTemplate, seen) match {
-              case Some(p) => p.asInstanceOf[Package] // FIXME
-              case None => error("IN PACKAGE: Could not convert parent: " + p.inTemplate.toString + " of " + p.toString)
-            },
-            p.name
-          ))
-        case o: model.Object =>
-          Some(Object(
-            convert(o.inTemplate, seen) match {
-              case Some(o) => o
-              case None => error("IN Object: Could not convert parent: " + o.inTemplate.toString + " of " + o.toString)
-            },
-            o.name,
-            List()
-          ))
-        case _ => None
+  def convert(entity: model.Entity): Unit = {
+    println("Processing " + entity.toString)
+    entity match {
+      case t: model.Trait => {
+        var newT = Class.create.name(t.name).saveMe
+        for ((p, i) <- t.typeParams.zip(0 to t.typeParams.length)) {
+          val converted = convertTypeParam(p)
+          newT.typeParams += converted
+          converted.save
+          println(converted)
+        }
       }
+      case x: model.RootPackage =>
+        Class.create.name("_root_").typ(TypeEnum.Package).save
+      case p: model.Package =>
+        Class.create.name(p.name).typ(TypeEnum.Package).save
+      case o: model.Object =>
+        Class.create.name(o.name).typ(TypeEnum.Object).save
+      case _ => ()
     }
   }
+  
 
-  def convertTypeParam(t: model.TypeParam): (String, Kind) = {
+  def convertTypeParam(t: model.TypeParam): TypeParam = {
     val parser = new TPParser
     parser.parseParam(t.name) match {
-      case parser.Success(param: TypeParam, _) => (param.name, param.kind)
+      case parser.Success(param: TypeParam, _) => param
       case _ => error("could not parse type parameter '" + t.name + "'")
     }
   }
-  */
 }
 

@@ -47,7 +47,9 @@ import MemType._
 class Class extends LongKeyedMapper[Class] with IdPK with OneToMany[Long, Class] with ManyToMany {
   def getSingleton = Class
   object name extends MappedString(this, 100)
-  object in extends MappedLongForeignKey(this, Package)
+
+  object in extends MappedLongForeignKey(this, Class)
+  object memberClasses extends MappedOneToMany(Class, Class.in, OrderBy(Class.name, Ascending))
   
   object members extends MappedOneToMany(Member, Member.in, OrderBy(Member.id, Ascending))
   object typ extends MappedEnum[Class, TypeEnum.type](this, TypeEnum)
@@ -56,6 +58,13 @@ class Class extends LongKeyedMapper[Class] with IdPK with OneToMany[Long, Class]
   //object tags extends MappedManyToMany(PostTags, PostTags.post, PostTags.tag, Tag)
   object typeParams extends MappedManyToMany(ClassTypeParam, ClassTypeParam.classes, ClassTypeParam.typeParams, TypeParam)
   object constructor extends MappedLongForeignKey(this, Arg)
+
+  def path = this.in.obj.map(List(_)).openOr(List()) ++ List(this)
+  
+  override def toString() = {
+    //FIXME add type params and such
+    path.map(_.name.is).mkString(".")
+  }
 }
 
 object Class extends Class with LongKeyedMetaMapper[Class] 
@@ -229,10 +238,3 @@ class Member extends LongKeyedMapper[Member] with IdPK with OneToMany[Long, Memb
 
 object Member extends Member with LongKeyedMetaMapper[Member] 
 
-//Package
-class Package extends LongKeyedMapper[Package] with IdPK {
-  def getSingleton = Package  
-  object in extends MappedLongForeignKey(this, Package)
-}
-
-object Package extends Package with LongKeyedMetaMapper[Package]
