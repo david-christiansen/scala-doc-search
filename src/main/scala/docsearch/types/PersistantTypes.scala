@@ -70,11 +70,19 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
   def createTrait = ""
   def createObject = ""
   def createRootPackage() = {
-    Class.find(By(Class.entityToString, "root")) openOr Class.create.entityToString("root").name("root").saveMe
+    Class.find(By(Class.entityToString, "root")) openOr 
+      Class.create.entityToString("root").name("root").typ(TypeEnum.Package).saveMe
     }
-  def createPackage(entityToString: String, name: String, in: String, memberClasses: List[String]) = {
-    Class.find(By(Class.entityToString, entityToString)) openOr Class.create.entityToString(entityToString).name(name).in(
-    Class.find(By(Class.name, in)) openOr Class.create.entityToString("NOT SURE YET").name(in).saveMe).saveMe
+    //should I pass the entity object in here?
+  def createPackage(entityToString: String, 
+                    name: String, in: 
+                    String, 
+                    memberClasses: List[String]) = {
+    Class.find(By(Class.entityToString, entityToString)) openOr 
+      Class.create.entityToString(entityToString).name(name).typ(TypeEnum.Package).in(
+        Class.find(By(Class.name, in)) openOr                         //get the package that this is in
+          Class.create.entityToString("NOT SURE YET").name(in).saveMe //create the package this is in if it's not found
+      ).saveMe
     }
 }
 
