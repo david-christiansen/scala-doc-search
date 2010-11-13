@@ -4,9 +4,6 @@ lib_managed
 *#*#
 scala-src
 src/main/resources/props/default.props
-lift_proto.db.h2.db
-lift_proto.db.h2.db.h2.db
-lift_proto.db.h2.dbc.h2.db
-lift_proto.db.trace.db
+lift_proto.*
 scratchpad.txt
 target/

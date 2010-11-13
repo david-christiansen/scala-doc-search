@@ -3,6 +3,8 @@ package docsearch.types
 import net.liftweb.mapper._
 import net.liftweb.common.{Box,Full,Empty,Failure,ParamFailure}
 
+import scala.tools.nsc.doc.{model, Universe}
+
 
 object Variance extends Enumeration {
   type Variance = Value
@@ -68,20 +70,48 @@ class Class extends LongKeyedMapper[Class] with IdPK with OneToMany[Long, Class]
 object Class extends Class with LongKeyedMetaMapper[Class] {
   def createClass = ""
   def createTrait = ""
-  def createObject = ""
+  def createObject(entityToString: String,
+                    name: String,
+                    in: model.DocTemplateEntity,
+                    members: List[model.MemberEntity],
+                    children: List[model.TemplateEntity],
+                    parents: List[model.TemplateEntity]) = {
+    Class.find(By(Class.entityToString, entityToString)) openOr
+      Class.create.
+        entityToString(entityToString).
+        name(name).
+        typ(TypeEnum.Object).
+        in(Class.find(By(Class.name, in.name)) openOr
+          Class.create.
+            entityToString("NOT SURE YET").
+            name(in.name).
+            saveMe
+      ).saveMe
+                    }
+  
   def createRootPackage() = {
     Class.find(By(Class.entityToString, "root")) openOr 
       Class.create.entityToString("root").name("root").typ(TypeEnum.Package).saveMe
     }
+    
+    //don't foget validation isPackage?
     //should I pass the entity object in here?
   def createPackage(entityToString: String, 
-                    name: String, in: 
-                    String, 
-                    memberClasses: List[String]) = {
+                    name: String, 
+                    in: model.DocTemplateEntity, 
+                    memberClasses: List[model.MemberEntity]): Class = {
     Class.find(By(Class.entityToString, entityToString)) openOr 
-      Class.create.entityToString(entityToString).name(name).typ(TypeEnum.Package).in(
-        Class.find(By(Class.name, in)) openOr                         //get the package that this is in
-          Class.create.entityToString("NOT SURE YET").name(in).saveMe //create the package this is in if it's not found
+      Class.create.
+        entityToString(entityToString).
+        name(name).
+        typ(TypeEnum.Package).
+        in(
+          //Class.createPackage(in.toString, in.name, in.inTemplate, in.members) //recursive call (looks like i get an infinite loop and i don't feel like waiting 10 minutes to debug it) 
+          Class.find(By(Class.name, in.name)) openOr                         //get the package that this is in
+            Class.create.
+              entityToString("NOT SURE YET").
+              name(in.name).
+              saveMe //create the package this is in if it's not found
       ).saveMe
     }
 }

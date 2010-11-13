@@ -37,7 +37,7 @@ object DataDumper {
   def convert(entity: model.Entity): Unit = {
     //println("Processing " + entity.toString)
     entity match {
-      case t: model.Trait => ()/*{
+      case t: model.Trait => /*{
         var newT = Class.create.name(t.name).saveMe
         for ((p, i) <- t.typeParams.zip(0 to t.typeParams.length)) {
           val converted = convertTypeParam(p)
@@ -46,12 +46,10 @@ object DataDumper {
           println(converted)
         }
       }*/
-      //def createPackage(entityToString: String, name: String, in: String, memberClasses: String)
       
-      case x: model.RootPackage => {println("Root package found: " + x.toString); Class.createRootPackage()}
-      case p: model.Package =>{ println("Package found: " + p.toString)
-        Class.createPackage(p.toString, p.name, p.inTemplate.name, p.members.map(x => x.name))}
-      case o: model.Object => ()
+      case x: model.RootPackage => Class.createRootPackage()
+      case p: model.Package => Class.createPackage(p.toString, p.name, p.inTemplate, p.members) //maybe members should filter out class members?
+      case o: model.Object => Class.createObject(o.toString, o.name, o.inTemplate, o.members, o.subClasses, o.inheritedFrom)
         //Class.create.name(o.name).typ(TypeEnum.Object).save
       case _ => ()
     }
