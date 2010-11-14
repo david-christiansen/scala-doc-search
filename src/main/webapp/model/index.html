@@ -1,5 +1,9 @@
 <lift:surround with="default" at="content">
   <h2>View Model</h2>
-
   
+  <ul>
+    <lift:modelView.packageList>
+      <li><package:showChildren><package:name /></package:showChildren></li>
+    </lift:modelView.packageList>
+  </ul>
 </lift:surround>
