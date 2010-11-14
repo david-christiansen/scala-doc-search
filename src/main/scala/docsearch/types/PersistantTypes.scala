@@ -81,13 +81,9 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
         entityToString(entityToString).
         name(name).
         typ(TypeEnum.Object).
-        in(Class.find(By(Class.name, in.name)) openOr
-          Class.create.
-            entityToString("NOT SURE YET").
-            name(in.name).
-            saveMe
-      ).saveMe
-                    }
+        in(Class.find(By(Class.entityToString, in.toString)) open_!). // we can assume the parent is there
+        saveMe
+  }
   
   def createRootPackage(asString: String) = {
     Class.find(By(Class.entityToString, asString)) openOr 

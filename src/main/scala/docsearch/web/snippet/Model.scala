@@ -44,7 +44,8 @@ class ModelView {
   def packageList(lookIn: types.Class)(html:NodeSeq): NodeSeq = {
     val contains = types.Class.findAll(
       By(types.Class.in, lookIn), 
-      By(types.Class.typ, types.TypeEnum.Package)
+      ByList(types.Class.typ, List(types.TypeEnum.Package, types.TypeEnum.Object)),
+      OrderBy(types.Class.name, Ascending)
     )
     
     def toggleChildren(parent: types.Class)(contents: NodeSeq): NodeSeq = {
@@ -62,9 +63,16 @@ class ModelView {
       }
     }
 
+    def icon(c: types.Class): NodeSeq = c.typ.is match {
+      case types.TypeEnum.Package => Text("[p]")
+      case types.TypeEnum.Object => Text("[o]")
+      case _ => Text ("[]")
+    }
+
     contains.flatMap((p: types.Class) => 
       bind("package", html, 
            "name" -> p.name.is, 
+           "icon" -> icon(p),
            "children" -> toggleChildren(p)_)
     )
   }

@@ -22,7 +22,7 @@ object DataDumper {
 
     while (todo.length > 0) {
       val current = todo.pop()
-      //println("Processing " + current.toString)
+      
       for (child <- contents(current)) {
         if (!seen.contains(child)) todo.push(child)
         seen += child 
