@@ -89,9 +89,9 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
       ).saveMe
                     }
   
-  def createRootPackage() = {
-    Class.find(By(Class.entityToString, "root")) openOr 
-      Class.create.entityToString("root").name("root").typ(TypeEnum.Package).saveMe
+  def createRootPackage(asString: String) = {
+    Class.find(By(Class.entityToString, asString)) openOr 
+      Class.create.entityToString(asString).name(asString).typ(TypeEnum.Package).saveMe
     }
     
     //don't foget validation isPackage?
@@ -106,12 +106,7 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
         name(name).
         typ(TypeEnum.Package).
         in(
-          //Class.createPackage(in.toString, in.name, in.inTemplate, in.members) //recursive call (looks like i get an infinite loop and i don't feel like waiting 10 minutes to debug it) 
-          Class.find(By(Class.name, in.name)) openOr                         //get the package that this is in
-            Class.create.
-              entityToString("NOT SURE YET").
-              name(in.name).
-              saveMe //create the package this is in if it's not found
+          Class.find(By(Class.entityToString, in.toString)) open_! //Just require that parent has been created
       ).saveMe
     }
 }

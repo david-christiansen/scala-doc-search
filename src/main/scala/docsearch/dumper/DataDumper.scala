@@ -7,7 +7,10 @@ import docsearch.types._
 
 object DataDumper {
   import bootstrap.liftweb.Boot
-  (new Boot).boot
+  val boot = (new Boot)
+  boot.boot
+  boot.clearDB
+  boot.createDB
 
   val seen: mutable.Set[model.Entity] = mutable.Set.empty
 
@@ -35,7 +38,7 @@ object DataDumper {
     }
 
   def convert(entity: model.Entity): Unit = {
-    //println("Processing " + entity.toString)
+    println("Processing " + entity.toString)
     entity match {
       case t: model.Trait => /*{
         var newT = Class.create.name(t.name).saveMe
@@ -47,7 +50,7 @@ object DataDumper {
         }
       }*/
       
-      case x: model.RootPackage => Class.createRootPackage()
+      case x: model.RootPackage => Class.createRootPackage(x.toString)
       case p: model.Package => Class.createPackage(p.toString, p.name, p.inTemplate, p.members) //maybe members should filter out class members?
       case o: model.Object => Class.createObject(o.toString, o.name, o.inTemplate, o.members, o.subClasses, o.inheritedFrom)
         //Class.create.name(o.name).typ(TypeEnum.Object).save
