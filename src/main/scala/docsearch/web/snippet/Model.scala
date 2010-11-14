@@ -9,6 +9,7 @@ import _root_.net.liftweb.http.js._
 import _root_.net.liftweb.http.js.JE._
 import _root_.net.liftweb.http.js.jquery.JqJE._
 import _root_.net.liftweb.http.js.jquery.JqJsCmds._
+import _root_.net.liftweb.http.js.JsCmds._
 import _root_.net.liftweb.http.SHtml._
 import _root_.net.liftweb.mapper._
 import _root_.net.liftweb.util.Helpers._
@@ -20,6 +21,10 @@ import docsearch.types
  */
 case class JqAfter(content: NodeSeq) extends JsExp with JsMember {
   override val toJsCmd = "after(" + fixHtml("inline", content) + ")"
+}
+
+case class JsMem(name: String) extends JsExp with JsMember {
+  override val toJsCmd = name
 }
 
 class ModelView {
@@ -42,19 +47,25 @@ class ModelView {
       By(types.Class.typ, types.TypeEnum.Package)
     )
     
-    def showChildren(parent: types.Class)(contents: NodeSeq): NodeSeq = {
+    def toggleChildren(parent: types.Class)(contents: NodeSeq): NodeSeq = {
       val id: String = nextFuncName
+      val childId: String = nextFuncName
+      
       a(Text(parent.name.is), "id" -> id) {
         val children = packageList(parent)(html)
-        val childList = <ul>{children}</ul>
-        JqId(id)~>JqAfter(childList)
+        val childList = <ul id={childId}>{children}</ul>
+        JsIf(
+          JsGt(JqId(childId)~>JsMem("length"), JsRaw("0")), 
+          JqId(childId)~>JqRemove(),
+          JqId(id)~>JqAfter(childList)
+        )
       }
     }
 
     contains.flatMap((p: types.Class) => 
       bind("package", html, 
            "name" -> p.name.is, 
-           "showChildren" -> showChildren(p)_)
+           "children" -> toggleChildren(p)_)
     )
   }
 
