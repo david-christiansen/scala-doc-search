@@ -32,7 +32,7 @@ object DataDumper {
     packages.find(x => x.toString == "_root_").map(x => Class.createRootPackage(x.toString))
     packages.sortWith((x,y)=> x.toString.length < y.toString.length) map createPersistantModel
     classes.sortWith((x,y)=> x.toString.length < y.toString.length) map createPersistantModel
-    classes.map(x => Class.createRelationships(x.toString, x.parentTemplates))
+    classes.map(x => Class.createRelationships(x.toString, x.asInstanceOf[model.DocTemplateEntity].parentTemplates)) //should probably cast this somewhere else
   }
   
   def traverse(obj: model.Entity): List[model.MemberEntity] = {

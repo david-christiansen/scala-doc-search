@@ -68,7 +68,7 @@ class Class extends LongKeyedMapper[Class] with IdPK with OneToMany[Long, Class]
 }
 
 object Class extends Class with LongKeyedMetaMapper[Class] {
-  def createClass(entityToString: String, name: String, in: String, parents: List[model.TemplateEntity]) ={     
+  def createClass(entityToString: String, name: String, in: String) ={     
     Class.find(By(Class.entityToString, entityToString)) openOr {
       var clas = Class.create.entityToString(entityToString).
         name(name).
@@ -86,12 +86,13 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
   }
   
   def createRelationships(entityToString: String, parents: List[model.TemplateEntity]) = {
-    clas = Class.find(By(Class.entityToString, entityToString)) openOr (error("Could not find " + c.toString))
+    var clas = Class.find(By(Class.entityToString, entityToString)) openOr (error("Could not find " + entityToString))
     for (p <- parents) p match {
       case c: model.Class => clas.parents += Class.find(By(Class.entityToString, c.toString)).openOr(error("Could not find " + c.toString))
       case o: model.Object => clas.parents += Class.find(By(Class.entityToString, o.toString)).openOr(error("Could not find " + o.toString))
       case t: model.Trait => clas.parents += Class.find(By(Class.entityToString, t.toString)).openOr(error("Could not find " + t.toString))
       case _ => ()
+    }
     clas.save
   }
 
