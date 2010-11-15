@@ -45,7 +45,7 @@ object MemType extends Enumeration {
 
 import MemType._
 
-//Class
+//Class, Object, Trait, Package
 class Class extends LongKeyedMapper[Class] with IdPK with OneToMany[Long, Class] with ManyToMany {
   def getSingleton = Class
   object entityToString extends MappedString(this, 200)
@@ -68,13 +68,32 @@ class Class extends LongKeyedMapper[Class] with IdPK with OneToMany[Long, Class]
 }
 
 object Class extends Class with LongKeyedMetaMapper[Class] {
-  def createClass(entityToString: String, name: String, in: String) =     
-    Class.find(By(Class.entityToString, entityToString)) openOr
-      Class.create.entityToString(entityToString).
+  def createClass(entityToString: String, name: String, in: String, parents: List[model.TemplateEntity]) ={     
+    Class.find(By(Class.entityToString, entityToString)) openOr {
+      var clas = Class.create.entityToString(entityToString).
         name(name).
         typ(TypeEnum.Class).
-        in(Class.find(By(Class.entityToString, in)).openOr(error("Could not find " + in))).
-        saveMe
+        in(Class.find(By(Class.entityToString, in)).openOr(error("Could not find " + in)))
+      /*not quite working yet
+      for (p <- parents) p match {
+        case c: model.Class => clas.parents += Class.find(By(Class.entityToString, c.toString)).openOr(error("Could not find " + c.toString))
+        case o: model.Object => clas.parents += Class.find(By(Class.entityToString, o.toString)).openOr(error("Could not find " + o.toString))
+        case t: model.Trait => clas.parents += Class.find(By(Class.entityToString, t.toString)).openOr(error("Could not find " + t.toString))
+        case _ => ()
+      }*/
+      clas.saveMe
+    }
+  }
+  
+  def createRelationships(entityToString: String, parents: List[model.TemplateEntity]) = {
+    clas = Class.find(By(Class.entityToString, entityToString)) openOr (error("Could not find " + c.toString))
+    for (p <- parents) p match {
+      case c: model.Class => clas.parents += Class.find(By(Class.entityToString, c.toString)).openOr(error("Could not find " + c.toString))
+      case o: model.Object => clas.parents += Class.find(By(Class.entityToString, o.toString)).openOr(error("Could not find " + o.toString))
+      case t: model.Trait => clas.parents += Class.find(By(Class.entityToString, t.toString)).openOr(error("Could not find " + t.toString))
+      case _ => ()
+    clas.save
+  }
 
   def createTrait(entityToString: String, name: String, in: String) = {
     Class.find(By(Class.entityToString, entityToString)) openOr
@@ -87,10 +106,7 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
   
   def createObject(entityToString: String,
                     name: String,
-                    in: String,
-                    members: List[model.MemberEntity],
-                    children: List[model.TemplateEntity],
-                    parents: List[model.TemplateEntity]) = {
+                    in: String) = {
     Class.find(By(Class.entityToString, entityToString)) openOr
       Class.create.
         entityToString(entityToString).
@@ -105,12 +121,10 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
       Class.create.entityToString(asString).name(asString).typ(TypeEnum.Package).saveMe
     }
     
-    //don't foget validation isPackage?
-    //should I pass the entity object in here?
+
   def createPackage(entityToString: String, 
                     name: String, 
-                    in: model.DocTemplateEntity, 
-                    memberClasses: List[model.MemberEntity]): Class = {
+                    in: model.DocTemplateEntity): Class = {
     Class.find(By(Class.entityToString, entityToString)) openOr 
       Class.create.
         entityToString(entityToString).
