@@ -52,7 +52,7 @@ class ModelView {
       val id: String = nextFuncName
       val childId: String = nextFuncName
       
-      a(Text(parent.name.is), "id" -> id) {
+      a(contents, "id" -> id) {
         val children = packageList(parent)(html)
         val childList = <ul id={childId}>{children}</ul>
         JsIf(
@@ -66,14 +66,15 @@ class ModelView {
     def icon(c: types.Class): NodeSeq = c.typ.is match {
       case types.TypeEnum.Package => Text("[p]")
       case types.TypeEnum.Object => Text("[o]")
+      case types.TypeEnum.Class => Text("[c]")
+      case types.TypeEnum.Trait => Text("[t]")
       case _ => Text ("[]")
     }
 
     contains.flatMap((p: types.Class) => 
       bind("package", html, 
-           "name" -> p.name.is, 
            "icon" -> icon(p),
-           "children" -> toggleChildren(p)_)
+           "name" -> toggleChildren(p)(Text(p.name.is)))
     )
   }
 

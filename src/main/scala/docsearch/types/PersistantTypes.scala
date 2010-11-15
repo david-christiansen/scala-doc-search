@@ -68,11 +68,26 @@ class Class extends LongKeyedMapper[Class] with IdPK with OneToMany[Long, Class]
 }
 
 object Class extends Class with LongKeyedMetaMapper[Class] {
-  def createClass = ""
-  def createTrait = ""
+  def createClass(entityToString: String, name: String, in: String) =     
+    Class.find(By(Class.entityToString, entityToString)) openOr
+      Class.create.entityToString(entityToString).
+        name(name).
+        typ(TypeEnum.Class).
+        in(Class.find(By(Class.entityToString, in)).openOr(error("Could not find " + in))).
+        saveMe
+
+  def createTrait(entityToString: String, name: String, in: String) = {
+    Class.find(By(Class.entityToString, entityToString)) openOr
+      Class.create.entityToString(entityToString).
+        name(name).
+        typ(TypeEnum.Trait).
+        in(Class.find(By(Class.entityToString, in)).openOr(error("Could not find " + in))).
+        saveMe
+  }
+  
   def createObject(entityToString: String,
                     name: String,
-                    in: model.DocTemplateEntity,
+                    in: String,
                     members: List[model.MemberEntity],
                     children: List[model.TemplateEntity],
                     parents: List[model.TemplateEntity]) = {
@@ -81,7 +96,7 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
         entityToString(entityToString).
         name(name).
         typ(TypeEnum.Object).
-        in(Class.find(By(Class.entityToString, in.toString)) open_!). // we can assume the parent is there
+        in(Class.find(By(Class.entityToString, in)) openOr error("Could not find " + in)). // we can assume the parent is there
         saveMe
   }
   
@@ -102,7 +117,7 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
         name(name).
         typ(TypeEnum.Package).
         in(
-          Class.find(By(Class.entityToString, in.toString)) open_! //Just require that parent has been created
+          Class.find(By(Class.entityToString, in.toString)) openOr error("Couldn't find " + in.toString) //Just require that parent has been created
       ).saveMe
     }
 }
