@@ -41,6 +41,7 @@ object MemType extends Enumeration {
   val Def = Value("def")
   val Val = Value("val")
   val Var = Value("var")
+  val LazyVal = Value("lazyval")
 }
 
 import MemType._
@@ -74,13 +75,6 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
         name(name).
         typ(TypeEnum.Class).
         in(Class.find(By(Class.entityToString, in)).openOr(error("Could not find " + in)))
-      /*not quite working yet
-      for (p <- parents) p match {
-        case c: model.Class => clas.parents += Class.find(By(Class.entityToString, c.toString)).openOr(error("Could not find " + c.toString))
-        case o: model.Object => clas.parents += Class.find(By(Class.entityToString, o.toString)).openOr(error("Could not find " + o.toString))
-        case t: model.Trait => clas.parents += Class.find(By(Class.entityToString, t.toString)).openOr(error("Could not find " + t.toString))
-        case _ => ()
-      }*/
       clas.saveMe
     }
   }
@@ -88,9 +82,13 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
   def createRelationships(entityToString: String, parents: List[model.TemplateEntity]) = {
     var clas = Class.find(By(Class.entityToString, entityToString)) openOr (error("Could not find " + entityToString))
     for (p <- parents) p match {
-      case c: model.Class => clas.parents += Class.find(By(Class.entityToString, c.toString)).openOr(error("Could not find " + c.toString))
-      case o: model.Object => clas.parents += Class.find(By(Class.entityToString, o.toString)).openOr(error("Could not find " + o.toString))
-      case t: model.Trait => clas.parents += Class.find(By(Class.entityToString, t.toString)).openOr(error("Could not find " + t.toString))
+      case p: model.Package => {
+        val par = Class.find(By(Class.entityToString, p.toString)).openOr(error("Could not find package" + p.toString)).memberClasses += clas
+        par.save
+      }
+      case c: model.Class => clas.parents += Class.find(By(Class.entityToString, c.toString)).openOr(error("Could not find class" + c.toString))
+      case o: model.Object => clas.parents += Class.find(By(Class.entityToString, o.toString)).openOr(error("Could not find object" + o.toString))
+      case t: model.Trait => clas.parents += Class.find(By(Class.entityToString, t.toString)).openOr(error("Could not find trait" + t.toString))
       case _ => ()
     }
     clas.save
@@ -221,7 +219,11 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
   def isInstanceOf = ""
 }
 
-object Type extends Type with LongKeyedMetaMapper[Type] 
+object Type extends Type with LongKeyedMetaMapper[Type] {
+  def createType() = {
+    
+  }
+}
 
 
 //TypeArg middle table
@@ -292,6 +294,8 @@ object Kind extends Kind with LongKeyedMetaMapper[Kind] {
 //Member
 class Member extends LongKeyedMapper[Member] with IdPK with OneToMany[Long, Member]{
   def getSingleton = Member
+  object entityToString extends MappedString(this, 200)
+  object name extends MappedString(this, 100)
   object in extends MappedLongForeignKey(this, Class)
   object typeParams extends MappedLongForeignKey(this, TypeParam)
   object memType extends MappedEnum[Member,MemType.type](this, MemType)
@@ -300,5 +304,17 @@ class Member extends LongKeyedMapper[Member] with IdPK with OneToMany[Long, Memb
   
 }
 
-object Member extends Member with LongKeyedMetaMapper[Member] 
+object Member extends Member with LongKeyedMetaMapper[Member] {
+  //Need to create types before this can finish
+  def createMember(member: model.MemberEntity){
+    Member.create.entityToString(member.toString).name(member.name).in(
+      Class.find(By(Class.entityToString, member.inTemplate.toString)).openOr(error("Could not find class: " + member.inTemplate.toString))
+    ).memType(if (member.isDef) MemType.Def
+              else if (member.isVal) MemType.Val
+              else if (member.isVar) MemType.Var
+              else if (member.isLazyVal) MemType.LazyVal
+              else null
+    ).saveMe      
+  }
+}
 
