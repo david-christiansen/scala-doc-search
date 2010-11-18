@@ -1,5 +1,7 @@
 package docsearch.types
 
+import docsearch.dumper.TPParser
+
 import net.liftweb.mapper._
 import net.liftweb.common.{Box,Full,Empty,Failure,ParamFailure}
 
@@ -69,13 +71,23 @@ class Class extends LongKeyedMapper[Class] with IdPK with OneToMany[Long, Class]
 }
 
 object Class extends Class with LongKeyedMetaMapper[Class] {
-  def createClass(entityToString: String, name: String, in: String) ={     
-    Class.find(By(Class.entityToString, entityToString)) openOr {
-      var clas = Class.create.entityToString(entityToString).
-        name(name).
-        typ(TypeEnum.Class).
-        in(Class.find(By(Class.entityToString, in)).openOr(error("Could not find " + in)))
-      clas.saveMe
+  
+  //creates a class, trait or object
+  def createClass(dte: model.DocTemplateEntity) = {
+    val tpp = new TPParser
+    Class.find(By(Class.entityToString, dte.toString)) openOr {
+      Class.create.entityToString(dte.toString).
+        name(dte.name).
+        typ(dte match {
+          case c: model.Class => TypeEnum.Class
+          case o: model.Object => TypeEnum.Object
+          case t: model.Trait => TypeEnum.Trait
+          case _ => error("Got something that wasn't a trait class or object in createClass'")
+        }).
+        in(Class.find(By(Class.entityToString, dte.inTemplate.toString)).openOr(error("Could not find " + in))
+        ).
+        //typeParams(tpp.parse(dte.typeParams.toString, tpp.param).getOrElse(error("Failed to parse typeparams in: " + dte.toString))).
+        saveMe
     }
   }
   
@@ -93,45 +105,21 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
     }
     clas.save
   }
-
-  def createTrait(entityToString: String, name: String, in: String) = {
-    Class.find(By(Class.entityToString, entityToString)) openOr
-      Class.create.entityToString(entityToString).
-        name(name).
-        typ(TypeEnum.Trait).
-        in(Class.find(By(Class.entityToString, in)).openOr(error("Could not find " + in))).
-        saveMe
-  }
-  
-  def createObject(entityToString: String,
-                    name: String,
-                    in: String) = {
-    Class.find(By(Class.entityToString, entityToString)) openOr
-      Class.create.
-        entityToString(entityToString).
-        name(name).
-        typ(TypeEnum.Object).
-        in(Class.find(By(Class.entityToString, in)) openOr error("Could not find " + in)). // we can assume the parent is there
-        saveMe
-  }
   
   def createRootPackage(asString: String) = {
     Class.find(By(Class.entityToString, asString)) openOr 
       Class.create.entityToString(asString).name(asString).typ(TypeEnum.Package).saveMe
     }
     
-
-  def createPackage(entityToString: String, 
-                    name: String, 
-                    in: model.DocTemplateEntity): Class = {
-    Class.find(By(Class.entityToString, entityToString)) openOr 
+  def createPackage(pack: model.Package): Class = {
+    Class.find(By(Class.entityToString, pack.toString)) openOr 
       Class.create.
-        entityToString(entityToString).
-        name(name).
+        entityToString(pack.toString).
+        name(pack.name).
         typ(TypeEnum.Package).
         in(
-          Class.find(By(Class.entityToString, in.toString)) openOr error("Couldn't find " + in.toString) //Just require that parent has been created
-      ).saveMe
+          Class.find(By(Class.entityToString, pack.inTemplate.toString)).openOr(error("Couldn't find " + in.toString))
+        ).saveMe
     }
 }
 
@@ -284,10 +272,10 @@ object Kind extends Kind with LongKeyedMetaMapper[Kind] {
   }
 
   // Construct the kind of a type constructor based on its parameters
-  def getKind(tps: List[TypeParam]): Kind =
+  def createKind(tps: List[TypeParam]): Kind =
     tps match {
       case Nil     => nullary
-      case p :: ps => arrow(p.kind.obj.open_!, getKind(ps))
+      case p :: ps => arrow(p.kind.obj.open_!, createKind(ps))
     }
 }
 
@@ -305,8 +293,10 @@ class Member extends LongKeyedMapper[Member] with IdPK with OneToMany[Long, Memb
 }
 
 object Member extends Member with LongKeyedMetaMapper[Member] {
-  //Need to create types before this can finish
+  //TODO Need to create types before this can finish
+  //FIXME should maybe have the function for ANY point to ANY instead of to whatever the first member is contained in?
   def createMember(member: model.MemberEntity){
+    Member.find(By(Member.name, member.name)) openOr(
     Member.create.entityToString(member.toString).name(member.name).in(
       Class.find(By(Class.entityToString, member.inTemplate.toString)).openOr(error("Could not find class: " + member.inTemplate.toString))
     ).memType(if (member.isDef) MemType.Def
@@ -314,7 +304,7 @@ object Member extends Member with LongKeyedMetaMapper[Member] {
               else if (member.isVar) MemType.Var
               else if (member.isLazyVal) MemType.LazyVal
               else null
-    ).saveMe      
+    ).saveMe)      
   }
 }
 
