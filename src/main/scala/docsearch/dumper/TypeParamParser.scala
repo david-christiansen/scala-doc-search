@@ -21,8 +21,6 @@ class TPParser extends RegexParsers {
     case name ~ params => {
       val realParams: List[TypeParam] = params getOrElse List()
       val kind: Kind = Kind.createKind(realParams)
-      println(params)
-      println("Kind:" + kind)
       val tp: TypeParam = TypeParam.create.name(name).kind(kind)
       for ((p, i) <- realParams.zip(Range(0, realParams.length))) {
         p.order(i).save
@@ -39,7 +37,10 @@ class TPParser extends RegexParsers {
     phrase(toParse)(new CharSequenceReader(input))
   }
 
-  def parseParam(input: String) = parse(input, param)
+  def parseParam(input: String): TypeParam = phrase(param)(new CharSequenceReader(input)) match {
+    case Success(tp, _) => tp
+    case _ => error("Could not parse " + input + " as type parameter")
+  }
 }
 
 object ParamParserTest extends TPParser with Application {

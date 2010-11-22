@@ -179,7 +179,7 @@ class QueryParser(val lexical: QueryLexer = new QueryLexer) extends TokenParsers
 }
 
 
-object TestLexer extends QueryLexer with Application {
+object TestQueryLexer extends QueryLexer with Application {
   def test(): Unit = {
     print("----LEXER> ")
     val input = Console.readLine()
@@ -198,7 +198,7 @@ object TestLexer extends QueryLexer with Application {
   test()
 }
 
-object TestParser extends QueryParser with Application {
+object TestQueryParser extends QueryParser with Application {
   def test():Unit = {
     print("------PARSER> ")
     val input = Console.readLine()

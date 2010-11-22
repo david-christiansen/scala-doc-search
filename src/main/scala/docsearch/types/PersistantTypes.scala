@@ -33,7 +33,8 @@ object TypeType extends Enumeration {
   val Function = Value("function")
   val Method = Value("method")
   val TypeVar = Value("type variable")
-  val InstanceOf = Value("Instance of")
+  val InstanceOf = Value("instance of")
+  val ConcreteType = Value("concrete type")
 }
 
 import TypeType._
@@ -53,13 +54,18 @@ class Class extends LongKeyedMapper[Class] with IdPK with OneToMany[Long, Class]
   def getSingleton = Class
   object entityToString extends MappedString(this, 200)
   object name extends MappedString(this, 100)
-  object in extends MappedLongForeignKey(this, Class)
-  object memberClasses extends MappedOneToMany(Class, Class.in, OrderBy(Class.name, Ascending))
-  object members extends MappedOneToMany(Member, Member.in, OrderBy(Member.id, Ascending))
   object typ extends MappedEnum[Class, TypeEnum.type](this, TypeEnum)
+  
+  object in extends MappedLongForeignKey(this, Class)
+  object memberClasses extends MappedOneToMany(Class, Class.in, OrderBy(Class.name, Ascending)) //Needed for in
+  
+  object members extends MappedOneToMany(Member, Member.in, OrderBy(Member.id, Ascending))
+  
   object children extends MappedManyToMany(Inheritance, Inheritance.children, Inheritance.parents, Class) 
   object parents extends MappedManyToMany(Inheritance, Inheritance.parents, Inheritance.children, Class)
+  
   object typeParams extends MappedManyToMany(ClassTypeParam, ClassTypeParam.classes, ClassTypeParam.typeParams, TypeParam)
+  //TODO Add contructor to Classes
   object constructor extends MappedLongForeignKey(this, Arg)
 
   def path = this.in.obj.map(List(_)).openOr(List()) ++ List(this)
@@ -76,7 +82,7 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
   def createClass(dte: model.DocTemplateEntity) = {
     val tpp = new TPParser
     Class.find(By(Class.entityToString, dte.toString)) openOr {
-      Class.create.entityToString(dte.toString).
+      val clas = Class.create.entityToString(dte.toString).
         name(dte.name).
         typ(dte match {
           case c: model.Class => TypeEnum.Class
@@ -85,9 +91,9 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
           case _ => error("Got something that wasn't a trait class or object in createClass'")
         }).
         in(Class.find(By(Class.entityToString, dte.inTemplate.toString)).openOr(error("Could not find " + in))
-        ).
-        //typeParams(tpp.parse(dte.typeParams.toString, tpp.param).getOrElse(error("Failed to parse typeparams in: " + dte.toString))).
-        saveMe
+        ).saveMe
+        dte.typeParams.map(tp=>tpp.parseParam(tp.name)).foreach(tp=>clas.typeParams += tp)
+        clas.save        
     }
   }
   
@@ -152,6 +158,7 @@ class TypeParam extends LongKeyedMapper[TypeParam] with IdPK with OneToMany[Long
   object params extends MappedOneToMany(TypeParam, TypeParam.parent, OrderBy(TypeParam.order, Ascending))
   object parent extends MappedLongForeignKey(this, TypeParam) // NULL if top-level
   object typ extends MappedLongForeignKey(this, Type)
+  object member extends MappedLongForeignKey(this, Member)
   
   def isTop: Boolean = {
     this.parent.obj match {
@@ -208,8 +215,30 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
 }
 
 object Type extends Type with LongKeyedMetaMapper[Type] {
-  def createType() = {
-    
+  def createConcreteType(name: String) = {
+    Type.find(By(Type.name, name)) openOr 
+      Type.create.name(name).typeType(TypeType.ConcreteType).saveMe    
+  }
+  
+  def createTypeVar(name:String) = {
+    Type.find(By(Type.name, name)) openOr 
+      Type.create.name(name).typeType(TypeType.TypeVar).saveMe  
+  }
+  
+  def createFunction(args: List[List[Type]], res: Type) = {
+    var func = Type.create.res(res)
+    //args foreach (_ foreach (x => func.funcArgs += x))
+    func.saveMe
+  }
+  
+  def createMethod(args: List[List[Type]], res: Type) = {
+    Type.create.name("TEST: METHOD").res(res).saveMe 
+  }
+  
+  def createTuple(elems: List[Type]) = {
+    var tuple = Type.create
+    elems foreach (x => tuple.elements += x)
+    tuple.saveMe
   }
 }
 
@@ -231,7 +260,14 @@ class Arg extends LongKeyedMapper[Arg] with IdPK with ManyToMany{
   object member extends MappedLongForeignKey(this, Member)
 }
 
-object Arg extends Arg with LongKeyedMetaMapper[Arg] 
+object Arg extends Arg with LongKeyedMetaMapper[Arg] {
+  def createArg(name: String, typ: Type, member: Member) {
+    Arg.create.name(name).
+    //typ().
+    save
+  }
+
+}
 
 //Kind
 class Kind extends LongKeyedMapper[Kind] with IdPK {
@@ -285,26 +321,36 @@ class Member extends LongKeyedMapper[Member] with IdPK with OneToMany[Long, Memb
   object entityToString extends MappedString(this, 200)
   object name extends MappedString(this, 100)
   object in extends MappedLongForeignKey(this, Class)
-  object typeParams extends MappedLongForeignKey(this, TypeParam)
+  object typeParams extends MappedOneToMany(TypeParam, TypeParam.member, OrderBy(TypeParam.id, Ascending))
   object memType extends MappedEnum[Member,MemType.type](this, MemType)
   object resultType extends MappedLongForeignKey(this, Type)
-  object args extends MappedOneToMany(Arg, Arg.member, OrderBy(Arg.id, Ascending)) //one to many 
+  object args extends MappedOneToMany(Arg, Arg.member, OrderBy(Arg.id, Ascending))
   
 }
 
 object Member extends Member with LongKeyedMetaMapper[Member] {
   //TODO Need to create types before this can finish
-  //FIXME should maybe have the function for ANY point to ANY instead of to whatever the first member is contained in?
-  def createMember(member: model.MemberEntity){
-    Member.find(By(Member.name, member.name)) openOr(
-    Member.create.entityToString(member.toString).name(member.name).in(
-      Class.find(By(Class.entityToString, member.inTemplate.toString)).openOr(error("Could not find class: " + member.inTemplate.toString))
-    ).memType(if (member.isDef) MemType.Def
-              else if (member.isVal) MemType.Val
-              else if (member.isVar) MemType.Var
-              else if (member.isLazyVal) MemType.LazyVal
-              else null
-    ).saveMe)      
+  //FIXME
+  def createMember(member: model.MemberEntity) = {
+    if (!(member.inheritedFrom.map(_.toString) exists (x => x == "scala.AnyRef" || x == "scala.Any"))) {
+      val mem = Member.create.
+        entityToString(member.toString).
+        name(member.name).
+        in(Class.find(By(Class.entityToString, member.inTemplate.toString)).openOr
+          (error("Could not find class: " + member.inTemplate.toString))).
+        memType(if (member.isDef) MemType.Def
+                else if (member.isVal) MemType.Val
+                else if (member.isVar) MemType.Var
+                else if (member.isLazyVal) MemType.LazyVal
+                else null
+      ).saveMe
+      if (member.isDef) {
+        val tpp = new TPParser
+        val m = member.asInstanceOf[model.Def]
+        m.typeParams.map(tp=>tpp.parseParam(tp.name)).foreach(tp=>mem.typeParams += tp)
+        }
+      mem.saveMe      
+    }    
   }
 }
 
