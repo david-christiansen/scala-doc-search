@@ -33,7 +33,7 @@ class ModelView {
     val rootPackage = types.Class.find(
       By(types.Class.name, "_root_"),
       NullRef(types.Class.in),
-      By(types.Class.typ, types.TypeEnum.Package)
+      By(types.Class.tlt, types.TopLevelType.Package)
     )
     rootPackage match {
       case Full(p) => packageList(p)(html)
@@ -44,7 +44,7 @@ class ModelView {
   def packageList(lookIn: types.Class)(html:NodeSeq): NodeSeq = {
     val contains = types.Class.findAll(
       By(types.Class.in, lookIn), 
-      ByList(types.Class.typ, List(types.TypeEnum.Package, types.TypeEnum.Object, types.TypeEnum.Class, types.TypeEnum.Trait)),
+      ByList(types.Class.tlt, List(types.TopLevelType.Package, types.TopLevelType.Object, types.TopLevelType.Class, types.TopLevelType.Trait)),
       OrderBy(types.Class.name, Ascending)
     )
     
@@ -63,11 +63,11 @@ class ModelView {
       }
     }
 
-    def icon(c: types.Class): NodeSeq = c.typ.is match {
-      case types.TypeEnum.Package => Text("[p]")
-      case types.TypeEnum.Object => Text("[o]")
-      case types.TypeEnum.Class => Text("[c]")
-      case types.TypeEnum.Trait => Text("[t]")
+    def icon(c: types.Class): NodeSeq = c.tlt.is match {
+      case types.TopLevelType.Package => Text("[p]")
+      case types.TopLevelType.Object => Text("[o]")
+      case types.TopLevelType.Class => Text("[c]")
+      case types.TopLevelType.Trait => Text("[t]")
       case _ => Text ("[]")
     }
 

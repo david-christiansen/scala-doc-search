@@ -1,6 +1,6 @@
 package docsearch.types
 
-import docsearch.dumper.TPParser
+import docsearch.dumper.{TPParser, TypeParser, ScalaDocTypeLexer}
 
 import net.liftweb.mapper._
 import net.liftweb.common.{Box,Full,Empty,Failure,ParamFailure}
@@ -17,18 +17,18 @@ object Variance extends Enumeration {
 
 import Variance._
 
-object TypeEnum extends Enumeration {
-  type TypeEnum = Value
+object TopLevelType extends Enumeration {
+  type TopLevelType = Value
   val Object = Value("object")
   val Package = Value("package")
   val Class = Value("class")
   val Trait = Value("trait")
 }
 
-import TypeEnum._
+import TopLevelType._
 
 object TypeType extends Enumeration {
-  type TypeEnum = Value
+  type TypeType = Value
   val Tuple = Value("tuple")
   val Function = Value("function")
   val Method = Value("method")
@@ -54,7 +54,9 @@ class Class extends LongKeyedMapper[Class] with IdPK with OneToMany[Long, Class]
   def getSingleton = Class
   object entityToString extends MappedString(this, 200)
   object name extends MappedString(this, 100)
-  object typ extends MappedEnum[Class, TypeEnum.type](this, TypeEnum)
+  object tlt extends MappedEnum[Class, TopLevelType.type](this, TopLevelType)
+  
+  object typ extends MappedLongForeignKey(this, Type)
   
   object in extends MappedLongForeignKey(this, Class)
   object memberClasses extends MappedOneToMany(Class, Class.in, OrderBy(Class.name, Ascending)) //Needed for in
@@ -84,10 +86,10 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
     Class.find(By(Class.entityToString, dte.toString)) openOr {
       val clas = Class.create.entityToString(dte.toString).
         name(dte.name).
-        typ(dte match {
-          case c: model.Class => TypeEnum.Class
-          case o: model.Object => TypeEnum.Object
-          case t: model.Trait => TypeEnum.Trait
+        tlt(dte match {
+          case c: model.Class => TopLevelType.Class
+          case o: model.Object => TopLevelType.Object
+          case t: model.Trait => TopLevelType.Trait
           case _ => error("Got something that wasn't a trait class or object in createClass'")
         }).
         in(Class.find(By(Class.entityToString, dte.inTemplate.toString)).openOr(error("Could not find " + in))
@@ -114,7 +116,7 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
   
   def createRootPackage(asString: String) = {
     Class.find(By(Class.entityToString, asString)) openOr 
-      Class.create.entityToString(asString).name(asString).typ(TypeEnum.Package).saveMe
+      Class.create.entityToString(asString).name(asString).tlt(TopLevelType.Package).saveMe
     }
     
   def createPackage(pack: model.Package): Class = {
@@ -122,7 +124,7 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
       Class.create.
         entityToString(pack.toString).
         name(pack.name).
-        typ(TypeEnum.Package).
+        tlt(TopLevelType.Package).
         in(
           Class.find(By(Class.entityToString, pack.inTemplate.toString)).openOr(error("Couldn't find " + in.toString))
         ).saveMe
@@ -189,15 +191,18 @@ object TypeParam extends TypeParam with LongKeyedMetaMapper[TypeParam]
 class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] with ManyToMany {
   def getSingleton = Type
   object typeType extends MappedEnum[Type, TypeType.type](this, TypeType) // Type of Type
-  object name extends MappedString(this, 100)             //typeVar
+  object typeVar extends MappedString(this, 100)             //typeVar
   object res extends MappedLongForeignKey(this, Type)     //method or function   
   object funcArgs extends MappedOneToMany(Arg, Arg.typ, OrderBy(Arg.id, Ascending)) //list of args
+  
   object methodArgs extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.id, Ascending)) //Methods (list of funcArgs)   
   
   object elements extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.id, Ascending)) //tuples
   object typeFK extends MappedLongForeignKey(this, Type) //foreign key for self referencing   
   object typeParam extends MappedOneToMany(TypeParam, TypeParam.typ, OrderBy(TypeParam.id, Ascending))  //Instance of 
-  object instanceOf extends MappedLongForeignKey(this, Class) //Instance of
+  
+  object concreteType extends MappedLongForeignKey(this, Class) 
+  //object traits extends MappedOneToMany(Class, Class.typ, OrderBy(Class.id, Ascending))
   
   
   //TODO validation
@@ -206,8 +211,7 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
     funcArgs.length == 0 &&
     methodArgs.length == 0 &&
     elements.length > 0 &&
-    typeParam.length == 0 &&
-    instanceOf.obj.isEmpty
+    typeParam.length == 0
   def isFunc = ""
   def isMethod = ""
   def isTypeVar = ""
@@ -216,13 +220,13 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
 
 object Type extends Type with LongKeyedMetaMapper[Type] {
   def createConcreteType(name: String) = {
-    Type.find(By(Type.name, name)) openOr 
-      Type.create.name(name).typeType(TypeType.ConcreteType).saveMe    
+    //Type.find(By(Type.concreteType, name)) openOr 
+      Type.create.typeVar(name).typeType(TypeType.ConcreteType).saveMe    
   }
   
   def createTypeVar(name:String) = {
-    Type.find(By(Type.name, name)) openOr 
-      Type.create.name(name).typeType(TypeType.TypeVar).saveMe  
+    Type.find(By(Type.typeVar, name)) openOr 
+      Type.create.typeVar(name).typeType(TypeType.TypeVar).saveMe  
   }
   
   def createFunction(args: List[List[Type]], res: Type) = {
@@ -232,7 +236,7 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
   }
   
   def createMethod(args: List[List[Type]], res: Type) = {
-    Type.create.name("TEST: METHOD").res(res).saveMe 
+    Type.create.res(res).saveMe 
   }
   
   def createTuple(elems: List[Type]) = {
@@ -258,6 +262,7 @@ class Arg extends LongKeyedMapper[Arg] with IdPK with ManyToMany{
   object name extends MappedString(this, 100)
   object typ extends MappedLongForeignKey(this, Type)
   object member extends MappedLongForeignKey(this, Member)
+  object order extends MappedInt(this)
 }
 
 object Arg extends Arg with LongKeyedMetaMapper[Arg] {
@@ -331,23 +336,84 @@ class Member extends LongKeyedMapper[Member] with IdPK with OneToMany[Long, Memb
 object Member extends Member with LongKeyedMetaMapper[Member] {
   //TODO Need to create types before this can finish
   //FIXME
+  def constructMemberTypes(entity: model.Entity) = {
+    def extractTypeVars(d: model.Entity): List[String] = {
+      val tvs = for (entity <- d.toRoot.reverse) yield entity match {
+        case dte: model.DocTemplateEntity => dte.typeParams map (_.name)
+        case fn: model.Def => fn.typeParams map (_.name)
+        case _ => List()
+      }
+      tvs.flatten
+    }
+    
+    def parseResultType(d: model.Entity{val resultType: model.TypeEntity}): Option[Type] = {
+      val parser = new TypeParser(new ScalaDocTypeLexer(extractTypeVars(d)))
+      parser.parse(d.resultType.name.replace("\u21d2","=>")) match {
+        case parser.Success(t, _) => Some(t)
+        case f@parser.Failure(msg, pos) => {println(f);None}
+        case _ => None
+      }
+    }
+    
+    def parseMethodArg(d: model.Entity{val resultType: model.TypeEntity}, inMethod: model.Entity): Option[Type] = {
+      val methTVars = extractTypeVars(inMethod)
+      val parser = new TypeParser(new ScalaDocTypeLexer(methTVars))
+      parser.parse(d.resultType.name.replace("\u21d2","=>"), parser.funcParam) match {
+        case parser.Success(t, _) => Some(t)
+        case f@parser.Failure(msg, pos) => {println(f);None}
+        case _ => None
+      }
+    }
+
+    val t = entity match {
+      case v: model.Val => {
+        //Every val has an implicit "this" argument for the instance it is called on
+        val thisArg: Option[Type] = parseResultType(v.inTemplate)
+        Tuple2(thisArg, parseResultType(v))
+      }
+      case d: model.Def => {
+        val resType = parseResultType(d)
+        val argTypes = 
+          for (argList <- d.valueParams) yield
+            for (arg <- argList if !arg.isImplicit)
+              yield parseMethodArg(arg, d).get
+
+        //Every method has an implicit "this" argument for the instance it is called on
+        val thisArg: Option[Type] = parseResultType(d.inTemplate)
+        Tuple2(List(thisArg)::argTypes, resType)
+      }
+      case _ => None
+    }
+    t
+  }
   def createMember(member: model.MemberEntity) = {
+    
+    val typeArgs, typeRes = constructMemberTypes(member)
+    println("Args: " + typeArgs + "\tResult: " + typeRes)
     if (!(member.inheritedFrom.map(_.toString) exists (x => x == "scala.AnyRef" || x == "scala.Any"))) {
+      val me = member match {
+        case v: model.Val => v
+        case d: model.Def => d
+        case _ => error("Got entity in create Member that isn't a Def or Val'")
+      }
       val mem = Member.create.
-        entityToString(member.toString).
-        name(member.name).
-        in(Class.find(By(Class.entityToString, member.inTemplate.toString)).openOr
-          (error("Could not find class: " + member.inTemplate.toString))).
-        memType(if (member.isDef) MemType.Def
-                else if (member.isVal) MemType.Val
-                else if (member.isVar) MemType.Var
-                else if (member.isLazyVal) MemType.LazyVal
+        entityToString(me.toString).
+        name(me.name).
+        in(Class.find(By(Class.entityToString, me.inTemplate.toString)).openOr
+          (error("Could not find class: " + me.inTemplate.toString))).
+        //Vals, Vars and Lazy Vals all use the trait model.Val
+        memType(if (me.isDef) MemType.Def
+                else if (me.isVal) MemType.Val
+                else if (me.isVar) MemType.Var
+                else if (me.isLazyVal) MemType.LazyVal
                 else null
       ).saveMe
       if (member.isDef) {
+        //typeParams
         val tpp = new TPParser
         val m = member.asInstanceOf[model.Def]
         m.typeParams.map(tp=>tpp.parseParam(tp.name)).foreach(tp=>mem.typeParams += tp)
+        //args
         }
       mem.saveMe      
     }    
