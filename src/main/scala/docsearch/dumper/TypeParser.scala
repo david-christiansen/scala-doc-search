@@ -208,7 +208,7 @@ class TypeParser(val lexical: TypeLexer = new TypeLexer) extends TokenParsers wi
 
   lazy val scalaType: PackratParser[Type] = 
     ( wildcard
-    //| withTraits<~(rep(annotation|existential))
+    | withTraits<~(rep(annotation|existential))
     | generic<~opt(star)<~(rep(annotation|existential))
     | function
     | tuple
@@ -227,14 +227,12 @@ class TypeParser(val lexical: TypeLexer = new TypeLexer) extends TokenParsers wi
       case lexical.VarName(chars) => Type.createTypeVar(chars, List())
     }
 
-  //FIXME Is this a type param?
-
   lazy val generic: PackratParser[Type] =
     (typeName|typeVar)~(("["~>rep1sep(scalaType<~opt(bounds), ","))<~"]")<~rep("["~rep1sep(scalaType, ",")~"]") ^^ {
       //FIXME should not use name to string but something better
       case name ~ args => if (name.typeType == TypeType.ConcreteType) Type.addConcreteTypeParams(name, args)
                           else Type.addTypeVarParams(name, args)
-      case _ => error("Faliled to parse generic")
+      case _ => error("Fawiled to parse generic")
     }
 
  
@@ -256,12 +254,13 @@ class TypeParser(val lexical: TypeLexer = new TypeLexer) extends TokenParsers wi
     ("("~>((scalaType<~",")~rep1sep(scalaType, ",")))<~")" ^^ {
       case t ~ ts => Type.createTuple(t::ts)
     }
-/*
+    
   lazy val withTraits: PackratParser[Type] = 
     ((generic | typeName)<~"with")~rep1sep((generic | typeName), "with") ^^ {
-      case t ~ ts => TypeWithTraits(t, ts)
+      //FIXME maybe add a add concrete type traits
+      case t ~ ts => Type.addConcreteTypeParams(t, ts)
     }
-*/
+    
   // Throw out type bounds
   lazy val bounds: PackratParser[Any] = rep(bound)
   lazy val bound: PackratParser[Any] = (">:" | "<:")~(generic | typeName | typeVar)

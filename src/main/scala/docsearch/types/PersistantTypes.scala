@@ -222,9 +222,11 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
   def createConcreteType(name: String, params: List[Type]) = {
     //FIXME should do this search by entityToString instead of by name
     //FIXME add saving of type Params
-    val clas = Class.find(By(Class.name, name)) openOr(error("Could not find class with name " + name ))
-    Type.find(By(Type.concreteType, clas)) openOr
-      Type.create.concreteType(clas).typeType(TypeType.ConcreteType).saveMe    
+    //val clas = Class.find(By(Class.name, name)) openOr(error("Could not find class with name " + name ))
+    //Type.find(By(Type.concreteType, clas)) openOr
+    //  Type.create.concreteType(clas).typeType(TypeType.ConcreteType).saveMe    
+    Type.find(By(Type.typeVar, "Class name: " + name)) openOr
+      Type.create.typeVar("Class name: " + name).typeType(TypeType.ConcreteType).saveMe
   }
   
   //FIXME Actually add the params
