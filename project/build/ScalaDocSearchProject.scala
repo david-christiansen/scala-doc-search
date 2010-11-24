@@ -34,13 +34,18 @@ class ScalaDocSearchProject(info: ProjectInfo) extends DefaultWebProject(info) {
   ).dependsOn(compile) describedAs "Runs the data dumper."
   /* END DEFINING DUMPER */
 
+override def testListeners. () 
+
   override def libraryDependencies = Set(
     "net.liftweb" %% "lift-webkit" % liftVersion % "compile->default",
     "net.liftweb" %% "lift-mapper" % liftVersion % "compile->default",
     "org.mortbay.jetty" % "jetty" % "6.1.22" % "test->default",
     "junit" % "junit" % "4.5" % "test->default",
     "org.scala-tools.testing" %% "specs" % "1.6.5" % "test->default",
-    "com.h2database" % "h2" % "1.2.138"
+    "com.h2database" % "h2" % "1.2.138",
+    "org.scala-tools.testing" % "scalacheck_2.8.0" % "1.7",
+    "org.scala-tools.testing" % "specs_2.8.0" % "1.6.5",
+    "org.scalatest" % "scalatest" % "1.2"
   ) ++ super.libraryDependencies
 
   val lift_postgresql = "postgresql" % "postgresql" % "8.4-701.jdbc4"
