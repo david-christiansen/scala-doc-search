@@ -409,7 +409,7 @@ object Member extends Member with LongKeyedMetaMapper[Member] {
   def createMember(member: model.MemberEntity) = {
     
     val typeArgs, typeRes = constructMemberTypes(member)
-    println("Args: " + typeArgs + "\tResult: " + typeRes)
+    //println("Args: " + typeArgs + "\tResult: " + typeRes)
     if (!(member.inheritedFrom.map(_.toString) exists (x => x == "scala.AnyRef" || x == "scala.Any"))) {
       val me = member match {
         case v: model.Val => v
