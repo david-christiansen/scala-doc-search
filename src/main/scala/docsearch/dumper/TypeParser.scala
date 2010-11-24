@@ -209,7 +209,7 @@ class TypeParser(val lexical: TypeLexer = new TypeLexer) extends TokenParsers wi
   lazy val scalaType: PackratParser[Type] = 
     ( wildcard
     //| withTraits<~(rep(annotation|existential))
-    //| generic<~opt(star)<~(rep(annotation|existential))
+    | generic<~opt(star)<~(rep(annotation|existential))
     | function
     | tuple
     | typeVar<~opt(star)<~(opt(bounds)~rep(annotation|existential))
@@ -219,22 +219,24 @@ class TypeParser(val lexical: TypeLexer = new TypeLexer) extends TokenParsers wi
   
   lazy val typeName: PackratParser[Type] =
     elem("type name", _.isInstanceOf[lexical.Name]) ^^ {
-      case lexical.Name(chars) => Type.createConcreteType(chars)
+      case lexical.Name(chars) => Type.createConcreteType(chars, List())
     }
 
   lazy val typeVar: PackratParser[Type] =
     elem("type variable", _.isInstanceOf[lexical.VarName]) ^^ {
-      case lexical.VarName(chars) => Type.createTypeVar(chars)
+      case lexical.VarName(chars) => Type.createTypeVar(chars, List())
     }
 
   //FIXME Is this a type param?
-  /*
-  lazy val generic: PackratParser[Generic] =
+
+  lazy val generic: PackratParser[Type] =
     (typeName|typeVar)~(("["~>rep1sep(scalaType<~opt(bounds), ","))<~"]")<~rep("["~rep1sep(scalaType, ",")~"]") ^^ {
-      case TypeName(name) ~ args => Generic(name, args)
-      case TypeVar(name) ~ args => Generic(name, args)
+      //FIXME should not use name to string but something better
+      case name ~ args => if (name.typeType == TypeType.ConcreteType) Type.addConcreteTypeParams(name, args)
+                          else Type.addTypeVarParams(name, args)
+      case _ => error("Faliled to parse generic")
     }
-    */
+
  
   lazy val wildcard: PackratParser[Type] =
     elem("underscore", _.isInstanceOf[lexical.Wildcard]) ^^ {
@@ -255,14 +257,14 @@ class TypeParser(val lexical: TypeLexer = new TypeLexer) extends TokenParsers wi
       case t ~ ts => Type.createTuple(t::ts)
     }
 /*
-  lazy val withTraits: PackratParser[ScalaType] = 
+  lazy val withTraits: PackratParser[Type] = 
     ((generic | typeName)<~"with")~rep1sep((generic | typeName), "with") ^^ {
       case t ~ ts => TypeWithTraits(t, ts)
     }
 */
   // Throw out type bounds
   lazy val bounds: PackratParser[Any] = rep(bound)
-  lazy val bound: PackratParser[Any] = (">:" | "<:")~(typeName | typeVar)//(generic | typeName | typeVar)
+  lazy val bound: PackratParser[Any] = (">:" | "<:")~(generic | typeName | typeVar)
 
   lazy val funcParam: PackratParser[Type] = (opt("=>")~>(scalaType))
 

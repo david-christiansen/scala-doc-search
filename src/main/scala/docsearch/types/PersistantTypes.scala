@@ -219,13 +219,27 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
 }
 
 object Type extends Type with LongKeyedMetaMapper[Type] {
-  def createConcreteType(name: String) = {
-    //Type.find(By(Type.concreteType, name)) openOr 
-      Type.create.typeVar(name).typeType(TypeType.ConcreteType).saveMe    
+  def createConcreteType(name: String, params: List[Type]) = {
+    //FIXME should do this search by entityToString instead of by name
+    //FIXME add saving of type Params
+    val clas = Class.find(By(Class.name, name)) openOr(error("Could not find class with name " + name ))
+    Type.find(By(Type.concreteType, clas)) openOr
+      Type.create.concreteType(clas).typeType(TypeType.ConcreteType).saveMe    
   }
   
-  def createTypeVar(name:String) = {
-    Type.find(By(Type.typeVar, name)) openOr 
+  //FIXME Actually add the params
+  def addConcreteTypeParams(name: Type, params: List[Type]) = {
+    name
+  }
+  
+  //FIXME Actually add the params
+  def addTypeVarParams(name: Type, params: List[Type]) = {
+    name
+  }
+  
+  def createTypeVar(name:String, params: List[Type]) = {
+    //FIXME add saving of type Params    
+    Type.find(By(Type.typeVar, name)) openOr
       Type.create.typeVar(name).typeType(TypeType.TypeVar).saveMe  
   }
   
@@ -243,6 +257,10 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
     var tuple = Type.create
     elems foreach (x => tuple.elements += x)
     tuple.saveMe
+  }
+  
+  def createGeneric(name: String, args: List[Type]){
+    
   }
 }
 
