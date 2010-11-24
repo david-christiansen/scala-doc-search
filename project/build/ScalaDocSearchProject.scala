@@ -34,8 +34,6 @@ class ScalaDocSearchProject(info: ProjectInfo) extends DefaultWebProject(info) {
   ).dependsOn(compile) describedAs "Runs the data dumper."
   /* END DEFINING DUMPER */
 
-override def testListeners. () 
-
   override def libraryDependencies = Set(
     "net.liftweb" %% "lift-webkit" % liftVersion % "compile->default",
     "net.liftweb" %% "lift-mapper" % liftVersion % "compile->default",
