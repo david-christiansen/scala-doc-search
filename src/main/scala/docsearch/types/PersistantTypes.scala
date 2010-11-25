@@ -344,7 +344,7 @@ class Member extends LongKeyedMapper[Member] with IdPK with OneToMany[Long, Memb
   object entityToString extends MappedString(this, 200)
   object name extends MappedString(this, 100)
   object in extends MappedLongForeignKey(this, Class)
-  object typeParams extends MappedOneToMany(TypeParam, TypeParam.member, OrderBy(TypeParam.id, Ascending))
+  object typeParams extends MappedOneToMany(TypeParam, TypeParam.member, OrderBy(TypeParam.order, Ascending))
   object memType extends MappedEnum[Member,MemType.type](this, MemType)
   object resultType extends MappedLongForeignKey(this, Type)
   object args extends MappedOneToMany(Arg, Arg.member, OrderBy(Arg.id, Ascending))
