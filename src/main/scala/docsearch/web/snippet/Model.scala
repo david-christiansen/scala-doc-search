@@ -44,8 +44,20 @@ class ModelView {
   def packageList(lookIn: types.Class)(html:NodeSeq): NodeSeq = {
     val contains = types.Class.findAll(
       By(types.Class.in, lookIn), 
-      ByList(types.Class.tlt, List(types.TopLevelType.Package, types.TopLevelType.Object, types.TopLevelType.Class, types.TopLevelType.Trait)),
+      ByList(
+        types.Class.tlt, 
+        List(
+          types.TopLevelType.Package, 
+          types.TopLevelType.Object, 
+          types.TopLevelType.Class, 
+          types.TopLevelType.Trait
+        )
+      ),
       OrderBy(types.Class.name, Ascending)
+    )
+
+    val members = types.Member.findAll(
+      By(types.Member.in, lookIn)
     )
     
     def toggleChildren(parent: types.Class)(contents: NodeSeq): NodeSeq = {
@@ -63,7 +75,7 @@ class ModelView {
       }
     }
 
-    def icon(c: types.Class): NodeSeq = c.tlt.is match {
+    def classIcon(c: types.Class): NodeSeq = c.tlt.is match {
       case types.TopLevelType.Package => Text("[p]")
       case types.TopLevelType.Object => Text("[o]")
       case types.TopLevelType.Class => Text("[c]")
@@ -71,10 +83,26 @@ class ModelView {
       case _ => Text ("[]")
     }
 
+    def memberIcon(m: types.Member): NodeSeq = Text("[m]")
+
+    def memberString(m: types.Member): NodeSeq = {
+      val memType = m.memType.toString
+      val name = m.name.is
+      val typeParams = {
+        if (m.typeParams.length == 0) ""
+        else "[" + m.typeParams.map(_.name).mkString(",") + "]"
+      }
+      
+      Text(memType + " " + name + typeParams)
+    }
+
     contains.flatMap((p: types.Class) => 
-      bind("package", html, 
-           "icon" -> icon(p),
+      bind("item", html, 
+           "icon" -> classIcon(p),
            "name" -> toggleChildren(p)(Text(p.name.is)))
+    ) ++
+    members.flatMap((m: types.Member) =>
+      bind("item", html, "icon" -> memberIcon(m), "name" -> memberString(m))
     )
   }
 
