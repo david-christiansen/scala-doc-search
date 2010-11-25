@@ -15,12 +15,12 @@ import docsearch.types._
 class Boot {
 
   def clearDB {
-    Schemifier.destroyTables_!!(Log.infoF _, Class, Member, TypeParam, Type, Arg, Kind, ClassTypeParam, Inheritance, TypeArg)
+    Schemifier.destroyTables_!!(Log.infoF _, Class, Member, TypeParam, Type, Arg, Kind, Inheritance)
   }
 
   def createDB {
     //Schemify
-    Schemifier.schemify(true, Log.infoF _, Class, Member, TypeParam, Type, Arg, Kind, ClassTypeParam, Inheritance, TypeArg)
+    Schemifier.schemify(true, Log.infoF _, Class, Member, TypeParam, Type, Arg, Kind, Inheritance)
 
   }
 
