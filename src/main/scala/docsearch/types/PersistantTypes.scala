@@ -286,10 +286,8 @@ class Arg extends LongKeyedMapper[Arg] with IdPK with ManyToMany{
 }
 
 object Arg extends Arg with LongKeyedMetaMapper[Arg] {
-  def createArg(name: String, typ: Type, member: Member) {
-    Arg.create.name(name).
-    //typ().
-    save
+  def createArg(name: String, typ: Type, member: Member, order: Int) {
+    Arg.create.name(name).typ(typ).order(order).saveMe
   }
 
 }
@@ -356,7 +354,7 @@ class Member extends LongKeyedMapper[Member] with IdPK with OneToMany[Long, Memb
 object Member extends Member with LongKeyedMetaMapper[Member] {
   //TODO Need to create types before this can finish
   //FIXME
-  def constructMemberTypes(entity: model.Entity) = {
+  def constructMemberTypes(entity: model.Entity, mem: Member) = {
     def extractTypeVars(d: model.Entity): List[String] = {
       val tvs = for (entity <- d.toRoot.reverse) yield entity match {
         case dte: model.DocTemplateEntity => dte.typeParams map (_.name)
@@ -387,9 +385,7 @@ object Member extends Member with LongKeyedMetaMapper[Member] {
 
     val t = entity match {
       case v: model.Val => {
-        //Every val has an implicit "this" argument for the instance it is called on
-        val thisArg: Option[Type] = parseResultType(v.inTemplate)
-        Tuple2(thisArg, parseResultType(v))
+        parseResultType(v)
       }
       case d: model.Def => {
         val resType = parseResultType(d)
@@ -398,44 +394,42 @@ object Member extends Member with LongKeyedMetaMapper[Member] {
             for (arg <- argList if !arg.isImplicit)
               yield parseMethodArg(arg, d).get
 
-        //Every method has an implicit "this" argument for the instance it is called on
-        val thisArg: Option[Type] = parseResultType(d.inTemplate)
-        Tuple2(List(thisArg)::argTypes, resType)
+        Tuple2(argTypes, resType)
       }
       case _ => None
     }
-    t
   }
-  def createMember(member: model.MemberEntity) = {
-    
-    val typeArgs, typeRes = constructMemberTypes(member)
+  def createMember(member1: model.MemberEntity) = {
     //println("Args: " + typeArgs + "\tResult: " + typeRes)
-    if (!(member.inheritedFrom.map(_.toString) exists (x => x == "scala.AnyRef" || x == "scala.Any"))) {
-      val me = member match {
+    if (!(member1.inheritedFrom.map(_.toString) exists (x => x == "scala.AnyRef" || x == "scala.Any"))) {
+      val member = member1 match {
         case v: model.Val => v
         case d: model.Def => d
         case _ => error("Got entity in create Member that isn't a Def or Val'")
       }
       val mem = Member.create.
-        entityToString(me.toString).
-        name(me.name).
-        in(Class.find(By(Class.entityToString, me.inTemplate.toString)).openOr
-          (error("Could not find class: " + me.inTemplate.toString))).
+        entityToString(member.toString).
+        name(member.name).
+        in(Class.find(By(Class.entityToString, member.inTemplate.toString)).openOr
+          (error("Could not find class: " + member.inTemplate.toString))).
         //Vals, Vars and Lazy Vals all use the trait model.Val
-        memType(if (me.isDef) MemType.Def
-                else if (me.isVal) MemType.Val
-                else if (me.isVar) MemType.Var
-                else if (me.isLazyVal) MemType.LazyVal
+        memType(if (member.isDef) MemType.Def
+                else if (member.isVal) MemType.Val
+                else if (member.isVar) MemType.Var
+                else if (member.isLazyVal) MemType.LazyVal
                 else null
-      ).saveMe
+      ).
+      //resultType(typeRes).
+      saveMe
+      //FIXME add for val as well
       if (member.isDef) {
         //typeParams
         val tpp = new TPParser
         val m = member.asInstanceOf[model.Def]
         m.typeParams.map(tp=>tpp.parseParam(tp.name)).foreach(tp=>mem.typeParams += tp)
-        //args
         }
-      mem.saveMe      
+      mem.saveMe   
+      constructMemberTypes(member1, mem)   
     }    
   }
 }
