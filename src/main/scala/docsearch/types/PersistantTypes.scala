@@ -193,6 +193,13 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
   object concreteType extends MappedLongForeignKey(this, Class) 
   object traits extends MappedOneToMany(Class, Class.typ, OrderBy(Class.id, Ascending))
   
+  override def toString = {
+    if (this.concreteType != null)
+      this.concreteType.toString
+    else if (this.typeVar.length > 0)
+      this.typeVar
+    else "type not implemented yet"
+  }
   
   //TODO validation
   def isTuple: Boolean = 
@@ -270,6 +277,8 @@ class Arg extends LongKeyedMapper[Arg] with IdPK with ManyToMany{
   object member extends MappedLongForeignKey(this, Member)
   object order extends MappedInt(this)
   object listOrder extends MappedInt(this)
+  
+  override def toString() = name + " : " + typ.toString
 }
 
 object Arg extends Arg with LongKeyedMetaMapper[Arg] {
