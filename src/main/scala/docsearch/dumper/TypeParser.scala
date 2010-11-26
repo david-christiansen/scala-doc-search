@@ -240,7 +240,7 @@ class TypeParser(val lexical: TypeLexer = new TypeLexer) extends TokenParsers wi
     elem("underscore", _.isInstanceOf[lexical.Wildcard]) ^^ {
       _ => Type
     }
-  //FIXME Is this right? This is the difference between methods and functions
+  //FIXME This is wrong
   lazy val function: PackratParser[Type] = 
     rep1(("("~> repsep(funcParam, ","))<~ ")")~opt("=>")~scalaType ^^ {
       case args ~ _ ~ ret => Type.createFunction(args, ret)
@@ -258,7 +258,7 @@ class TypeParser(val lexical: TypeLexer = new TypeLexer) extends TokenParsers wi
   lazy val withTraits: PackratParser[Type] = 
     ((generic | typeName)<~"with")~rep1sep((generic | typeName), "with") ^^ {
       //FIXME maybe add a add concrete type traits
-      case t ~ ts => Type.addConcreteTypeParams(t, ts)
+      case t ~ ts => Type.addTraits(t, ts)
     }
     
   // Throw out type bounds
