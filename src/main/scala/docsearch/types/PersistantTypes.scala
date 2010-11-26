@@ -197,12 +197,16 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
 
   object traits extends MappedOneToMany(Class, Class.typ, OrderBy(Class.id, Ascending))
   
-  override def toString = {
-    if (this.concreteType != null)
-      this.concreteType.toString
-    else if (this.typeVar.length > 0)
-      this.typeVar
-    else "type not implemented yet"
+  override def toString = { /* FIXME missing details */
+    this.typeType match {
+      case Tuple => this.elements.map(_.toString).mkString("(", ", ", ")")
+      case Function => this.funcArgs.map(_.toString).mkString("(", ", ", ")") + "=>"
+      case Method => this.funcArgs.map(_.toString).mkString("(", ", ", ")") + "method"
+      case TypeVar => this.typeVar.is
+      case InstanceOf => this.concreteType.obj.map(_.toString).openOr("nope") /* FIXME is this redundant? */
+      case ConcreteType => this.concreteType.obj.map(_.toString).openOr("nope")
+      case ConcreteDummy => this.name.is
+    }
   }
 
   
@@ -239,7 +243,8 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
   }
   
   def addTypeVarParams(name: Type, params: List[Type]) = {
-    params foreach(p => name.typeParams += p)
+    // FIXME: dies with mysterious error when putting a type in where a param belongs
+    // params foreach(p => name.typeParams += p)
     name.saveMe
   }
   
@@ -353,6 +358,11 @@ class Member extends LongKeyedMapper[Member] with IdPK with OneToMany[Long, Memb
   object resultType extends MappedLongForeignKey(this, Type)
   object args extends MappedOneToMany(Arg, Arg.member, OrderBy(Arg.listOrder, Ascending))
   
+  def getArgLists(): List[List[Arg]] = {
+    val lists: List[List[Arg]] = 
+      args.groupBy(_.listOrder.is).toList.sortWith(_._1 < _._1).map(_._2.toList)
+    lists map {l: List[Arg] => l.sortWith(_.order.is < _.order.is)}
+  }
 }
 
 object Member extends Member with LongKeyedMetaMapper[Member] {
@@ -367,7 +377,6 @@ object Member extends Member with LongKeyedMetaMapper[Member] {
     }
 
     def extractTypeQualifiers(entity: model.TypeEntity): Map[String, String] = {
-      println(entity.name + " - " + entity.refEntity)
       (for ((start, (t, end)) <- entity.refEntity) 
        yield (entity.name.substring(start, start+end) -> t.toString)).toMap
     }

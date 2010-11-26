@@ -245,7 +245,6 @@ class TypeParser(val lexical: TypeLexer = new TypeLexer) extends TokenParsers wi
       case name ~ args => 
         if (name.typeType == TypeType.ConcreteType) 
           Type.addConcreteTypeParams(name, args)
-                          
         else Type.addTypeVarParams(name, args)
       case _ => error("Fawiled to parse generic")
     }

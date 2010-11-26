@@ -88,13 +88,18 @@ class ModelView {
     def memberString(m: types.Member): NodeSeq = {
       val memType = m.memType.toString
       val name = m.name.is
-      val args = "(" + m.args.map(_.toString).mkString(",") + ") => " + m.resultType.toString
+      val args = m.getArgLists map {
+        alist: List[types.Arg] => 
+        alist.map(arg => arg.name.is + ": " + arg.typ.obj.map(_.toString).openOr("NO TYPE")).
+          mkString("(", ", ", ")")
+      } mkString
+      val resType = m.resultType.obj.map(_.name).openOr("NO TYPE!")
       val typeParams = {
         if (m.typeParams.length == 0) ""
         else "[" + m.typeParams.map(_.name).mkString(",") + "]"
       }
       
-      Text(memType + " " + name + args + typeParams)
+      Text(memType + " " + name + typeParams + args + ": " + resType)
     }
 
     contains.flatMap((p: types.Class) => 
