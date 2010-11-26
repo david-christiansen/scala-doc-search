@@ -149,7 +149,6 @@ class TypeParam extends LongKeyedMapper[TypeParam] with IdPK with OneToMany[Long
   object kind extends MappedLongForeignKey(this, Kind)
   object params extends MappedOneToMany(TypeParam, TypeParam.parent, OrderBy(TypeParam.order, Ascending))
   object parent extends MappedLongForeignKey(this, TypeParam) // NULL if top-level
-  object typ extends MappedLongForeignKey(this, Type)
   object member extends MappedLongForeignKey(this, Member)
   object clas extends MappedLongForeignKey(this, Class)
   
@@ -190,11 +189,22 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
   
   object elements extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.id, Ascending)) //tuples
   object typeFK extends MappedLongForeignKey(this, Type) //foreign key for self referencing   
-  object typeParam extends MappedOneToMany(TypeParam, TypeParam.typ, OrderBy(TypeParam.id, Ascending))  //Instance of 
+  object typeParams extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.id, Ascending))  //Instance of 
   
   object concreteType extends MappedLongForeignKey(this, Class) 
-  //object traits extends MappedOneToMany(Class, Class.typ, OrderBy(Class.id, Ascending))
+
   object name extends MappedString(this, 100)
+
+  object traits extends MappedOneToMany(Class, Class.typ, OrderBy(Class.id, Ascending))
+  
+  override def toString = {
+    if (this.concreteType != null)
+      this.concreteType.toString
+    else if (this.typeVar.length > 0)
+      this.typeVar
+    else "type not implemented yet"
+  }
+
   
   //TODO validation
   def isTuple: Boolean = 
@@ -202,7 +212,7 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
     funcArgs.length == 0 &&
     methodArgs.length == 0 &&
     elements.length > 0 &&
-    typeParam.length == 0
+    typeParams.length == 0
   def isFunc = ""
   def isMethod = ""
   def isTypeVar = ""
@@ -223,20 +233,27 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
     }
   }
   
-  //FIXME Actually add the params
+  //FIXME This doesn't need params because it can get them from the associated class?
   def addConcreteTypeParams(name: Type, params: List[Type]) = {
     name
   }
   
-  //FIXME Actually add the params
   def addTypeVarParams(name: Type, params: List[Type]) = {
-    name
+    params foreach(p => name.typeParams += p)
+    name.saveMe
   }
   
-  def createTypeVar(name:String, params: List[Type]) = {
-    //FIXME add saving of type Params    
-    Type.find(By(Type.typeVar, name)) openOr
-      Type.create.typeVar(name).typeType(TypeType.TypeVar).saveMe  
+  def createTypeVar(name:String, params: List[Type]) = {   
+    val tv = Type.find(By(Type.typeVar, name)) openOr
+      Type.create.typeVar(name).typeType(TypeType.TypeVar).saveMe
+    params foreach(p=> tv.typeParams += p)
+    tv.saveMe
+  }
+  
+  def addTraits(name: Type, traits: List[Type]) = {
+    for (t <- traits if (t.typeType == TypeType.ConcreteType))
+      name.traits += t.concreteType.obj.openOr(error("Could not retrieve class while adding traits: " + t))
+    name.saveMe
   }
   
   def createFunction(args: List[List[Type]], res: Type) = {
@@ -268,6 +285,8 @@ class Arg extends LongKeyedMapper[Arg] with IdPK with ManyToMany{
   object member extends MappedLongForeignKey(this, Member)
   object order extends MappedInt(this)
   object listOrder extends MappedInt(this)
+  
+  override def toString() = name + " : " + typ.toString
 }
 
 object Arg extends Arg with LongKeyedMetaMapper[Arg] {
