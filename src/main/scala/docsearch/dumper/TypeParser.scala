@@ -20,6 +20,10 @@ trait TypeTokens extends Tokens {
     override def toString = "`" + chars + "`"
   }
 
+  case class NameWithQualified(chars: String, qualified: String) extends Token {
+    override def toString = "`" + chars + "(" + qualified + ")`" 
+  }
+
   /**
    * A token representing a type variable
    */
@@ -168,9 +172,11 @@ class TypeLexer extends Lexical with TypeTokens with RegexParsers {
   )
 }
 
-class ScalaDocTypeLexer(typeVars: List[String]) extends TypeLexer {
+class ScalaDocTypeLexer(typeVars: List[String], qualified: Map[String, String]) extends TypeLexer {
   override def nameOrVar(name: String) =
-    if (typeVars contains name) VarName(name) else Name(name)
+    if (typeVars contains name) VarName(name) 
+    else if (qualified contains name) NameWithQualified(name, qualified(name))
+    else Name(name)
 }
 
 object SymbolGenerator {
@@ -218,9 +224,15 @@ class TypeParser(val lexical: TypeLexer = new TypeLexer) extends TokenParsers wi
     )
   
   lazy val typeName: PackratParser[Type] =
-    elem("type name", _.isInstanceOf[lexical.Name]) ^^ {
-      case lexical.Name(chars) => Type.createConcreteType(chars, List())
-    }
+    (elem("type name", _.isInstanceOf[lexical.Name]) ^^ {
+      case lexical.Name(chars) => {
+        println("Discovered type without link to entity - " + chars)
+        Type.createConcreteType(chars, List())
+      }
+     }) |
+    (elem("qualified type name", _.isInstanceOf[lexical.NameWithQualified]) ^^ {
+      case lexical.NameWithQualified(_, qual) => Type.createConcreteType(qual, List())
+     })
 
   lazy val typeVar: PackratParser[Type] =
     elem("type variable", _.isInstanceOf[lexical.VarName]) ^^ {
@@ -230,8 +242,11 @@ class TypeParser(val lexical: TypeLexer = new TypeLexer) extends TokenParsers wi
   lazy val generic: PackratParser[Type] =
     (typeName|typeVar)~(("["~>rep1sep(scalaType<~opt(bounds), ","))<~"]")<~rep("["~rep1sep(scalaType, ",")~"]") ^^ {
       //FIXME should not use name to string but something better
-      case name ~ args => if (name.typeType == TypeType.ConcreteType) Type.addConcreteTypeParams(name, args)
-                          else Type.addTypeVarParams(name, args)
+      case name ~ args => 
+        if (name.typeType == TypeType.ConcreteType) 
+          Type.addConcreteTypeParams(name, args)
+                          
+        else Type.addTypeVarParams(name, args)
       case _ => error("Fawiled to parse generic")
     }
 

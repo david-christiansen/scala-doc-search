@@ -35,6 +35,7 @@ object TypeType extends Enumeration {
   val TypeVar = Value("type variable")
   val InstanceOf = Value("instance of")
   val ConcreteType = Value("concrete type")
+  val ConcreteDummy = Value("concrete type (name only)")
 }
 
 import TypeType._
@@ -193,7 +194,7 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
   
   object concreteType extends MappedLongForeignKey(this, Class) 
   //object traits extends MappedOneToMany(Class, Class.typ, OrderBy(Class.id, Ascending))
-  
+  object name extends MappedString(this, 100)
   
   //TODO validation
   def isTuple: Boolean = 
@@ -210,13 +211,16 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
 
 object Type extends Type with LongKeyedMetaMapper[Type] {
   def createConcreteType(name: String, params: List[Type]) = {
-    //FIXME should do this search by entityToString instead of by name
-    //FIXME add saving of type Params
-    //val clas = Class.find(By(Class.name, name)) openOr(error("Could not find class with name " + name ))
-    //Type.find(By(Type.concreteType, clas)) openOr
-    //  Type.create.concreteType(clas).typeType(TypeType.ConcreteType).saveMe    
-    Type.find(By(Type.typeVar, "Class name: " + name)) openOr
-      Type.create.typeVar("Class name: " + name).typeType(TypeType.ConcreteType).saveMe
+    val clas = Class.find(
+      By(Class.entityToString, name)
+    )
+    
+    clas match {
+      case Full(c) =>
+        Type.find(By(Type.concreteType, c)) openOr
+          Type.create.concreteType(c).typeType(TypeType.ConcreteType).saveMe
+      case _ => Type.create.name(name).typeType(TypeType.ConcreteDummy).saveMe
+    }
   }
   
   //FIXME Actually add the params
@@ -342,9 +346,18 @@ object Member extends Member with LongKeyedMetaMapper[Member] {
       }
       tvs.flatten
     }
+
+    def extractTypeQualifiers(entity: model.TypeEntity): Map[String, String] = {
+      println(entity.name + " - " + entity.refEntity)
+      (for ((start, (t, end)) <- entity.refEntity) 
+       yield (entity.name.substring(start, start+end) -> t.toString)).toMap
+    }
     
     def parseResultType(d: model.Entity{val resultType: model.TypeEntity}): Option[Type] = {
-      val parser = new TypeParser(new ScalaDocTypeLexer(extractTypeVars(d)))
+      val parser = new TypeParser(new ScalaDocTypeLexer(
+        extractTypeVars(d), 
+        extractTypeQualifiers(d.resultType)
+      ))
       parser.parse(d.resultType.name.replace("\u21d2","=>")) match {
         case parser.Success(t, _) => Some(t)
         case f@parser.Failure(msg, pos) => {println(f);None}
@@ -354,7 +367,8 @@ object Member extends Member with LongKeyedMetaMapper[Member] {
     
     def parseMethodArg(d: model.Entity{val resultType: model.TypeEntity}, inMethod: model.Entity): Option[Type] = {
       val methTVars = extractTypeVars(inMethod)
-      val parser = new TypeParser(new ScalaDocTypeLexer(methTVars))
+      val methTQual = extractTypeQualifiers(d.resultType)
+      val parser = new TypeParser(new ScalaDocTypeLexer(methTVars, methTQual))
       parser.parse(d.resultType.name.replace("\u21d2","=>"), parser.funcParam) match {
         case parser.Success(t, _) => Some(t)
         case f@parser.Failure(msg, pos) => {println(f);None}
