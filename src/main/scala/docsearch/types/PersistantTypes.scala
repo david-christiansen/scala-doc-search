@@ -33,9 +33,9 @@ object TypeType extends Enumeration {
   val Function = Value("function")
   val Method = Value("method")
   val TypeVar = Value("type variable")
-  val InstanceOf = Value("instance of")
   val ConcreteType = Value("concrete type")
   val ConcreteDummy = Value("concrete type (name only)")
+  val TypeApp = Value("type application")
 }
 
 import TypeType._
@@ -197,15 +197,19 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
 
   object traits extends MappedOneToMany(Class, Class.typ, OrderBy(Class.id, Ascending))
   
+  object appOp extends MappedLongForeignKey(this, Type)
+  object typeArgOrder extends MappedInt(this)
+  object typeArgs extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.typeArgOrder, Ascending))
+  
   override def toString = { /* FIXME missing details */
     this.typeType match {
       case Tuple => this.elements.map(_.toString).mkString("(", ", ", ")")
       case Function => this.funcArgs.map(_.toString).mkString("(", ", ", ")") + "=>"
       case Method => this.funcArgs.map(_.toString).mkString("(", ", ", ")") + "method"
       case TypeVar => this.typeVar.is
-      case InstanceOf => this.concreteType.obj.map(_.toString).openOr("nope") /* FIXME is this redundant? */
       case ConcreteType => this.concreteType.obj.map(_.toString).openOr("nope")
       case ConcreteDummy => this.name.is
+      case TypeApp => this.appOp.toString + this.typeArgs.map(_.toString).mkString("[", ", ", "]")
     }
   }
 
@@ -237,15 +241,25 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
     }
   }
   
-  //FIXME This doesn't need params because it can get them from the associated class?
+  //FIXME Should this create a new class instead of just adding it?
   def addConcreteTypeParams(name: Type, params: List[Type]) = {
-    name
+    params foreach(p => name.typeParams += p)
+    name.saveMe
   }
   
   def addTypeVarParams(name: Type, params: List[Type]) = {
     // FIXME: dies with mysterious error when putting a type in where a param belongs
     // params foreach(p => name.typeParams += p)
     name.saveMe
+  }
+  
+  def createTypeApp(typ: Type, args: List[Type]) = {
+    require(typ.typeType == TypeVar || typ.typeType == ConcreteType || typ.typeType == ConcreteDummy)
+    val t = Type.create.appOp(typ).saveMe
+    for ((arg, i) <- args.zipWithIndex) {
+      t.typeArgs += arg.typeArgOrder(i).saveMe
+    }
+    //TODO: add relationship to type args
   }
   
   def createTypeVar(name:String, params: List[Type]) = {   
@@ -261,12 +275,14 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
     name.saveMe
   }
   
+  //(Int) => (Int) => Boolean = <function1>
   def createFunction(args: List[List[Type]], res: Type) = {
     var func = Type.create.res(res)
     //args foreach (_ foreach (x => func.funcArgs += x))
     func.saveMe
   }
   
+  //(n: Int)(x: Int)Boolean
   def createMethod(args: List[List[Type]], res: Type) = {
     Type.create.res(res).saveMe 
   }
@@ -359,8 +375,10 @@ class Member extends LongKeyedMapper[Member] with IdPK with OneToMany[Long, Memb
   object args extends MappedOneToMany(Arg, Arg.member, OrderBy(Arg.listOrder, Ascending))
   
   def getArgLists(): List[List[Arg]] = {
+    // lists gets the argument lists in the correct order, split from one big list
     val lists: List[List[Arg]] = 
       args.groupBy(_.listOrder.is).toList.sortWith(_._1 < _._1).map(_._2.toList)
+    //Now sort the individual argument lists
     lists map {l: List[Arg] => l.sortWith(_.order.is < _.order.is)}
   }
 }
@@ -438,7 +456,6 @@ object Member extends Member with LongKeyedMetaMapper[Member] {
                 else if (member.isLazyVal) MemType.LazyVal
                 else null
       ).saveMe
-      //FIXME add for val as well
       if (member.isDef) {
         //typeParams
         val tpp = new TPParser
@@ -447,7 +464,7 @@ object Member extends Member with LongKeyedMetaMapper[Member] {
         }
       mem.save  
       constructMemberTypes(member, mem)   
-    }    
+    }   
   }
 }
 
