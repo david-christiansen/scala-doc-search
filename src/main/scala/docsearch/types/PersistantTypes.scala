@@ -183,9 +183,7 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
   object typeType extends MappedEnum[Type, TypeType.type](this, TypeType) // Type of Type
   object typeVar extends MappedString(this, 100)             //typeVar
   object res extends MappedLongForeignKey(this, Type)     //method or function   
-  object funcArgs extends MappedOneToMany(Arg, Arg.typ, OrderBy(Arg.id, Ascending)) //list of args
-  
-  object methodArgs extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.id, Ascending)) //Methods (list of funcArgs)   
+  object args extends MappedOneToMany(Arg, Arg.typ, OrderBy(Arg.id, Ascending)) //list of args
   
   object elements extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.id, Ascending)) //tuples
   object typeFK extends MappedLongForeignKey(this, Type) //foreign key for self referencing   
@@ -204,8 +202,8 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
   override def toString = { /* FIXME missing details */
     this.typeType match {
       case Tuple => this.elements.map(_.toString).mkString("(", ", ", ")")
-      case Function => this.funcArgs.map(_.toString).mkString("(", ", ", ")") + "=>"
-      case Method => this.funcArgs.map(_.toString).mkString("(", ", ", ")") + "method"
+      case Function => this.args.map(_.toString).mkString("(", ", ", ")") + "=>"
+      case Method => this.args.map(_.toString).mkString("(", ", ", ")") + "method"
       case TypeVar => this.typeVar.is
       case ConcreteType => this.concreteType.obj.map(_.toString).openOr("nope")
       case ConcreteDummy => this.name.is
@@ -217,8 +215,7 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
   //TODO validation
   def isTuple: Boolean = 
     res.obj.isEmpty &&
-    funcArgs.length == 0 &&
-    methodArgs.length == 0 &&
+    args.length == 0 &&
     elements.length > 0 &&
     typeParams.length == 0
   def isFunc = ""
@@ -253,6 +250,8 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
     name.saveMe
   }
   
+  
+  //TODO finish me!
   def createTypeApp(typ: Type, args: List[Type]) = {
     require(typ.typeType == TypeVar || typ.typeType == ConcreteType || typ.typeType == ConcreteDummy)
     val t = Type.create.appOp(typ).saveMe
@@ -277,14 +276,32 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
   
   //(Int) => (Int) => Boolean = <function1>
   def createFunction(args: List[List[Type]], res: Type) = {
-    var func = Type.create.res(res)
-    //args foreach (_ foreach (x => func.funcArgs += x))
-    func.saveMe
+    val method = Type.create.typeType(TypeType.Function).res(res).saveMe 
+    var outer, inner = 0        
+      for (argList <- args) {
+        inner = 0
+        for (arg <- argList){
+          method.args += Arg.create.name("anonymous").typ(arg).order(inner).listOrder(outer).saveMe
+          inner += 1  
+        }
+        outer += 1
+      } 
+    method.saveMe
   }
   
   //(n: Int)(x: Int)Boolean
   def createMethod(args: List[List[Type]], res: Type) = {
-    Type.create.res(res).saveMe 
+    val method = Type.create.typeType(TypeType.Method).res(res).saveMe 
+    var outer, inner = 0        
+      for (argList <- args) {
+        inner = 0
+        for (arg <- argList){
+          method.args += Arg.create.name("anonymous").typ(arg).order(inner).listOrder(outer).saveMe
+          inner += 1  
+        }
+        outer += 1
+      } 
+    method.saveMe       
   }
   
   def createTuple(elems: List[Type]) = {
@@ -298,7 +315,7 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
   }
 }
 
-//Arg
+//Arg, Anonymous methods have no member and name anonymous
 class Arg extends LongKeyedMapper[Arg] with IdPK with ManyToMany{
   def getSingleton = Arg
   object name extends MappedString(this, 100)
