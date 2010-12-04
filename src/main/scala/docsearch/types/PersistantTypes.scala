@@ -36,6 +36,7 @@ object TypeType extends Enumeration {
   val ConcreteType = Value("concrete type")
   val ConcreteDummy = Value("concrete type (name only)")
   val TypeApp = Value("type application")
+  val Wildcard = Value("wildcard")
 }
 
 import TypeType._
@@ -208,6 +209,7 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
       case ConcreteType => this.concreteType.obj.map(_.toString).openOr("nope")
       case ConcreteDummy => this.name.is
       case TypeApp => this.appOp.toString + this.typeArgs.map(_.toString).mkString("[", ", ", "]")
+      case Wildcard => "_"
     }
   }
 
@@ -229,27 +231,19 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
     val clas = Class.find(
       By(Class.entityToString, name)
     )
-    
-    clas match {
+    val ct = clas match {
       case Full(c) =>
-        Type.find(By(Type.concreteType, c)) openOr
-          Type.create.concreteType(c).typeType(TypeType.ConcreteType).saveMe
+        val t = Type.find(By(Type.concreteType, c))
+        t match {
+          case Full(tt) => if (params.isEmpty) tt
+                           else Type.create.concreteType(c).typeType(TypeType.ConcreteType).saveMe
+          case Empty => Type.create.concreteType(c).typeType(TypeType.ConcreteType).saveMe
+        }
       case _ => Type.create.name(name).typeType(TypeType.ConcreteDummy).saveMe
     }
-  }
-  
-  //FIXME Should this create a new class instead of just adding it?
-  def addConcreteTypeParams(name: Type, params: List[Type]) = {
-    params foreach(p => name.typeParams += p)
-    name.saveMe
-  }
-  
-  def addTypeVarParams(name: Type, params: List[Type]) = {
-    // FIXME: dies with mysterious error when putting a type in where a param belongs
-    // params foreach(p => name.typeParams += p)
-    name.saveMe
-  }
-  
+    params foreach(p=> ct.typeParams += p)
+    ct.saveMe
+  }  
   
   //TODO finish me!
   def createTypeApp(typ: Type, args: List[Type]) = {
@@ -262,8 +256,12 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
   }
   
   def createTypeVar(name:String, params: List[Type]) = {   
-    val tv = Type.find(By(Type.typeVar, name)) openOr
-      Type.create.typeVar(name).typeType(TypeType.TypeVar).saveMe
+    val t = Type.find(By(Type.typeVar, name))    
+    val tv = t match {
+      case Full(tt) => if (params.isEmpty) tt
+                       else Type.create.typeVar(name).typeType(TypeType.TypeVar).saveMe
+      case Empty => Type.create.typeVar(name).typeType(TypeType.TypeVar).saveMe
+    }
     params foreach(p=> tv.typeParams += p)
     tv.saveMe
   }
@@ -274,7 +272,6 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
     name.saveMe
   }
   
-  //(Int) => (Int) => Boolean = <function1>
   def createFunction(args: List[List[Type]], res: Type) = {
     val method = Type.create.typeType(TypeType.Function).res(res).saveMe 
     var outer, inner = 0        
@@ -289,29 +286,14 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
     method.saveMe
   }
   
-  //(n: Int)(x: Int)Boolean
-  def createMethod(args: List[List[Type]], res: Type) = {
-    val method = Type.create.typeType(TypeType.Method).res(res).saveMe 
-    var outer, inner = 0        
-      for (argList <- args) {
-        inner = 0
-        for (arg <- argList){
-          method.args += Arg.create.name("anonymous").typ(arg).order(inner).listOrder(outer).saveMe
-          inner += 1  
-        }
-        outer += 1
-      } 
-    method.saveMe       
-  }
-  
   def createTuple(elems: List[Type]) = {
     var tuple = Type.create
     elems foreach (x => tuple.elements += x)
     tuple.saveMe
   }
   
-  def createGeneric(name: String, args: List[Type]){
-    
+  def wildcard() = {
+    Type.find(By(Type.typeType, Wildcard)) openOr Type.create.typeType(Wildcard).saveMe
   }
 }
 

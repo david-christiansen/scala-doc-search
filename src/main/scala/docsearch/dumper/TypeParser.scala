@@ -226,7 +226,6 @@ class TypeParser(val lexical: TypeLexer = new TypeLexer) extends TokenParsers wi
   lazy val typeName: PackratParser[Type] =
     (elem("type name", _.isInstanceOf[lexical.Name]) ^^ {
       case lexical.Name(chars) => {
-        println("Discovered type without link to entity - " + chars)
         Type.createConcreteType(chars, List())
       }
      }) |
@@ -241,26 +240,25 @@ class TypeParser(val lexical: TypeLexer = new TypeLexer) extends TokenParsers wi
 
   lazy val generic: PackratParser[Type] =
     (typeName|typeVar)~(("["~>rep1sep(scalaType<~opt(bounds), ","))<~"]")<~rep("["~rep1sep(scalaType, ",")~"]") ^^ {
-      //FIXME should not use name to string but something better
       case name ~ args => 
         if (name.typeType == TypeType.ConcreteType) 
-          Type.addConcreteTypeParams(name, args)
-        else Type.addTypeVarParams(name, args)
-      case _ => error("Fawiled to parse generic")
+          Type.createConcreteType(name.concreteType.obj.get.name, args)
+        else Type.createTypeVar(name.typeVar, args)
+      case _ => error("Failed to parse generic")
     }
 
  
   lazy val wildcard: PackratParser[Type] =
     elem("underscore", _.isInstanceOf[lexical.Wildcard]) ^^ {
-      _ => Type
+      _ => Type.wildcard
     }
-  //FIXME This is wrong
+
   lazy val function: PackratParser[Type] = 
     rep1(("("~> repsep(funcParam, ","))<~ ")")~opt("=>")~scalaType ^^ {
       case args ~ _ ~ ret => Type.createFunction(args, ret)
     } |
     (scalaType<~"=>")~scalaType ^^ {
-      case t1 ~ t2 => Type.createMethod(List(List(t1)), t2)
+      case t1 ~ t2 => Type.createFunction(List(List(t1)), t2)
     }
 
 
@@ -271,7 +269,6 @@ class TypeParser(val lexical: TypeLexer = new TypeLexer) extends TokenParsers wi
     
   lazy val withTraits: PackratParser[Type] = 
     ((generic | typeName)<~"with")~rep1sep((generic | typeName), "with") ^^ {
-      //FIXME maybe add a add concrete type traits
       case t ~ ts => Type.addTraits(t, ts)
     }
     
