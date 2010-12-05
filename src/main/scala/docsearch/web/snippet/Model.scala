@@ -58,7 +58,8 @@ class ModelView {
     )
 
     val members = types.Member.findAll(
-      By(types.Member.in, lookIn)
+      By(types.Member.in, lookIn),
+      OrderBy(types.Member.name, Ascending)
     )
     
     def toggleChildren(parent: types.Class)(contents: NodeSeq): NodeSeq = {
@@ -139,7 +140,10 @@ class ModelView {
     contains.flatMap((p: types.Class) => 
       bind("item", html, 
            "icon" -> classIcon(p),
-           "name" -> toggleChildren(p)(Text(p.name.is)))
+           "name" -> 
+             toggleChildren(p)(Text(p.name.is + (
+               if (p.typeParams.length > 0) p.typeParams.map(_.name.is).mkString("[", ", ", "]") else ""
+             ))))
     ) ++
     members.flatMap((m: types.Member) =>
       bind("item", html, "icon" -> memberIcon(m), "name" -> memberNodes(m))

@@ -230,7 +230,7 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
     }
   }
 
-  override def toString = { /* FIXME missing details */
+  override def toString = {
     this.typeType match {
       case Tuple => this.elements.map(_.toString).mkString("(", ", ", ")")
       case Function => {
