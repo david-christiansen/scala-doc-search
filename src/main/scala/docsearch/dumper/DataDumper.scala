@@ -29,10 +29,15 @@ object DataDumper {
     val members = dte.filter(x => x.isDef || x.isVar || x.isVal || x.isLazyVal)
     println("now writing to db")
     
+    println("Saving root package to db")
     packages.find(x => x.toString == "_root_").map(x => Class.createRootPackage(x.toString))  //create root package
+    println("Saving packages to db")
     packages.sortWith((x,y)=> x.toString.length < y.toString.length) foreach Class.createPackage  
-    classes.sortWith((x,y)=> x.toString.length < y.toString.length) foreach Class.createClass     
+    println("Saving classes, traits, etc to db")
+    classes.sortWith((x,y)=> x.toString.length < y.toString.length) foreach Class.createClass
+    println("Saving inheritance graph to db")
     classes.map(x => Class.createRelationships(x.toString, x.parentTemplates))
+    println("Putting members and their types in db")
     members foreach Member.createMember
   }
   
