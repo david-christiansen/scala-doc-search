@@ -1,7 +1,7 @@
 package docsearch.web
 package snippet
 
-import scala.xml.{Text, NodeSeq}
+import scala.xml.{ Text, Node, NodeSeq }
 
 import _root_.net.liftweb.common._
 import _root_.net.liftweb.http._
@@ -15,6 +15,7 @@ import _root_.net.liftweb.mapper._
 import _root_.net.liftweb.util.Helpers._
 
 import docsearch.types
+import docsearch.utils._
 
 /**
  * Implemented like the other ones from Lift library
@@ -85,6 +86,39 @@ class ModelView {
 
     def memberIcon(m: types.Member): NodeSeq = Text("[m]")
 
+    def argNodes(arg: types.Arg): NodeSeq = 
+      <span class="arg">{Text(arg.name.is)}: {arg.typ.map(_.toXhtml).openOr(Text("ERROR"))}</span>
+
+    def flattenNodes(ns: Seq[NodeSeq]): NodeSeq = 
+      ns.foldLeft(NodeSeq.Empty) {(a: NodeSeq, b: NodeSeq) => a ++ b}
+
+    def memberNodes(m: types.Member): NodeSeq = {
+      val memType = m.memType.toString
+      val name = Text(m.name.is)
+      val args: NodeSeq = {
+        val aLists = m.getArgLists flatMap {
+          argList => <span class="argList">{flattenNodes(argList.map(argNodes)).parenList}</span>
+        }
+        <span class="argLists">{flattenNodes(aLists)}</span>
+      }
+      val resType = m.resultType.obj.map(_.toXhtml).openOr("NO TYPE!")
+      val typeParams = {
+        if (m.typeParams.length == 0) NodeSeq.Empty
+        else {
+          val params: NodeSeq = m.typeParams map {p: types.TypeParam => <span class="typeParam">{p.name.is}</span>}
+          <span class="typeParams">{params.mkNodes(Text("["), Text(", "), Text("]"))}</span>
+        }
+      }
+      
+      <span class="member">
+        {Text(memType)}
+        {Text(" ")}
+        <span class="memName">{name}</span>
+        {typeParams}
+        {args}:  {resType}
+      </span>
+    }
+
     def memberString(m: types.Member): NodeSeq = {
       val memType = m.memType.toString
       val name = m.name.is
@@ -108,7 +142,7 @@ class ModelView {
            "name" -> toggleChildren(p)(Text(p.name.is)))
     ) ++
     members.flatMap((m: types.Member) =>
-      bind("item", html, "icon" -> memberIcon(m), "name" -> memberString(m))
+      bind("item", html, "icon" -> memberIcon(m), "name" -> memberNodes(m))
     )
   }
 

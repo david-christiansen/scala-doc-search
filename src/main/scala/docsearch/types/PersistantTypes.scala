@@ -184,7 +184,7 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
   object typeType extends MappedEnum[Type, TypeType.type](this, TypeType) // Type of Type
   object typeVar extends MappedString(this, 100)             //typeVar
   object res extends MappedLongForeignKey(this, Type)     //method or function   
-  object args extends MappedOneToMany(Arg, Arg.typ, OrderBy(Arg.id, Ascending)) //list of args
+  object args extends MappedOneToMany(Arg, Arg.in, OrderBy(Arg.id, Ascending)) //list of args
   
   object elements extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.id, Ascending)) //tuples
   object typeFK extends MappedLongForeignKey(this, Type) //foreign key for self referencing   
@@ -200,10 +200,35 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
   object typeArgOrder extends MappedInt(this)
   object typeArgs extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.typeArgOrder, Ascending))
   
+  def toXhtml: scala.xml.NodeSeq = {
+    import scala.xml._
+    import docsearch.utils._
+        
+    this.typeType match {
+      case Tuple => {
+        val contentNodes: NodeSeq = this.elements.flatMap(_.toXhtml)
+        val contents = contentNodes.parenList
+        <span class="typeTuple" id={this.id.toString}>({contents})</span>
+      }
+      case Function => {
+        val argTypes: NodeSeq = this.args.flatMap(_.typ.obj.map(_.toXhtml).openOr(Text("ERRORTYPE")))
+        argTypes.parenList ++ <span class="funcArrow">{EntityRef("rArr")}</span> ++ this.res.obj.map(_.toXhtml).openOr(Text("ERRORTYPE"))
+      }
+      case TypeVar => <span class="typeVar">{this.typeVar.is}</span>
+      case ConcreteType => <span class="concreteType">{this.concreteType.obj.map(_.toString).openOr("nope")}</span>
+      case ConcreteDummy => <span class="concreteType">{this.name.is}</span>
+      case Wildcard => Text("_")
+      case _ => <span class="notdone">Not done</span>
+    }
+  }
+
   override def toString = { /* FIXME missing details */
     this.typeType match {
       case Tuple => this.elements.map(_.toString).mkString("(", ", ", ")")
-      case Function => this.args.map(_.toString).mkString("(", ", ", ")") + "=>"
+      case Function => {
+        val argTypes = this.args.map(_.typ.obj.map(_.toString).openOr("ERRORTYPE"))
+        argTypes.mkString("(", ", ", ")") + "=>" + this.res.obj.map(_.toString).openOr("ERRORTYPE")
+      }
       case Method => this.args.map(_.toString).mkString("(", ", ", ")") + "method"
       case TypeVar => this.typeVar.is
       case ConcreteType => this.concreteType.obj.map(_.toString).openOr("nope")
@@ -277,7 +302,7 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
     var outer, inner = 0        
       for (argList <- args) {
         inner = 0
-        for (arg <- argList){
+        for (arg <- argList) {
           method.args += Arg.create.name("anonymous").typ(arg).order(inner).listOrder(outer).saveMe
           inner += 1  
         }
@@ -287,8 +312,8 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
   }
   
   def createTuple(elems: List[Type]) = {
-    var tuple = Type.create
-    elems foreach (x => tuple.elements += x)
+    var tuple = Type.create.typeType(TypeType.Tuple)
+    elems foreach {x => tuple.elements += x}
     tuple.saveMe
   }
   
@@ -302,11 +327,12 @@ class Arg extends LongKeyedMapper[Arg] with IdPK with ManyToMany{
   def getSingleton = Arg
   object name extends MappedString(this, 100)
   object typ extends MappedLongForeignKey(this, Type)
+  object in extends MappedLongForeignKey(this, Type)
   object member extends MappedLongForeignKey(this, Member)
   object order extends MappedInt(this)
   object listOrder extends MappedInt(this)
   
-  override def toString() = name + " : " + typ.toString
+  override def toString() = name + " : " + typ.obj.toString
 }
 
 object Arg extends Arg with LongKeyedMetaMapper[Arg] {
