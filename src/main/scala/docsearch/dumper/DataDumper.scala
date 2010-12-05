@@ -37,8 +37,14 @@ object DataDumper {
     classes.sortWith((x,y)=> x.toString.length < y.toString.length) foreach Class.createClass
     println("Saving inheritance graph to db")
     classes.map(x => Class.createRelationships(x.toString, x.parentTemplates))
-    println("Putting members and their types in db")
-    members foreach Member.createMember
+    
+    val memCount = members.length
+    println("Putting " + memCount + " members and their types in db")
+    for ((mem, thisMem) <- members.zipWithIndex) { 
+      if ((thisMem + 1) % 1000 == 0) 
+        println(" Reached member " + (thisMem + 1) + " of " + memCount + " (" + (thisMem * 100 / memCount) + ")%")
+      Member.createMember(mem)
+    }
   }
   
   def flatten(obj: model.Entity): List[model.MemberEntity] = {
