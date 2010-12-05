@@ -208,11 +208,13 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
       case Tuple => {
         val contentNodes: NodeSeq = this.elements.flatMap(_.toXhtml)
         val contents = contentNodes.parenList
-        <span class="typeTuple" id={this.id.toString}>({contents})</span>
+        <span class="typeTuple" id={this.id.toString}>{contents}</span>
       }
       case Function => {
         val argTypes: NodeSeq = this.args.flatMap(_.typ.obj.map(_.toXhtml).openOr(Text("ERRORTYPE")))
-        argTypes.parenList ++ <span class="funcArrow">{EntityRef("rArr")}</span> ++ this.res.obj.map(_.toXhtml).openOr(Text("ERRORTYPE"))
+        <span class="function" id={this.id.toString}>
+          {argTypes.parenList ++ <span class="funcArrow">{EntityRef("rArr")}</span> ++ this.res.obj.map(_.toXhtml).openOr(Text("ERRORTYPE"))}
+        </span>
       }
       case TypeVar => <span class="typeVar">{this.typeVar.is}</span>
       case ConcreteType => <span class="concreteType">{this.concreteType.obj.map(_.toString).openOr("nope")}</span>
@@ -281,14 +283,9 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
   }
   
   def createTypeVar(name:String, params: List[Type]) = {   
-    val t = Type.find(By(Type.typeVar, name))    
-    val tv = t match {
-      case Full(tt) => if (params.isEmpty) tt
-                       else Type.create.typeVar(name).typeType(TypeType.TypeVar).saveMe
-      case Empty => Type.create.typeVar(name).typeType(TypeType.TypeVar).saveMe
-    }
-    params foreach(p=> tv.typeParams += p)
-    tv.saveMe
+    val t = Type.create.typeVar(name).typeType(TypeType.TypeVar)
+    params foreach {p => t.typeParams += p}
+    t.saveMe
   }
   
   def addTraits(name: Type, traits: List[Type]) = {
@@ -312,9 +309,12 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
   }
   
   def createTuple(elems: List[Type]) = {
+    require(elems.length >= 1) // All tuples have at least 1 element
     var tuple = Type.create.typeType(TypeType.Tuple)
     elems foreach {x => tuple.elements += x}
-    tuple.saveMe
+    tuple.save
+    assert(tuple.elements.length > 0)
+    tuple
   }
   
   def wildcard() = {
@@ -487,8 +487,8 @@ object Member extends Member with LongKeyedMetaMapper[Member] {
         val m = member.asInstanceOf[model.Def]
         m.typeParams.map(tp=>tpp.parseParam(tp.name)).foreach(tp=>mem.typeParams += tp)
         }
-      mem.save  
-      constructMemberTypes(member, mem)   
+      mem.save
+      constructMemberTypes(member, mem)
     }   
   }
 }
