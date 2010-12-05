@@ -41,7 +41,7 @@ object DataDumper {
     val memCount = members.length
     println("Putting " + memCount + " members and their types in db")
     for ((mem, thisMem) <- members.zipWithIndex) { 
-      if ((thisMem + 1) % 1000 == 0) 
+      if ((thisMem + 1) % 10000 == 0) 
         println(" Reached member " + (thisMem + 1) + " of " + memCount + " (" + (thisMem * 100 / memCount) + ")%")
       Member.createMember(mem)
     }
