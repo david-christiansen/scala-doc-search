@@ -84,15 +84,16 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
   //creates a class, trait or object
   def createClass(dte: model.DocTemplateEntity) = {
     val tpp = new TPParser
-    Class.find(By(Class.entityToString, dte.toString)) openOr {
+    val tlt = dte match {
+      case c: model.Class => TopLevelType.Class
+      case o: model.Object => TopLevelType.Object
+      case t: model.Trait => TopLevelType.Trait
+      case _ => error("Got something that wasn't a trait class or object in createClass'")
+    }
+    Class.find(By(Class.entityToString, dte.toString), By(Class.tlt, tlt)) openOr {
       val clas = Class.create.entityToString(dte.toString).
         name(dte.name).
-        tlt(dte match {
-          case c: model.Class => TopLevelType.Class
-          case o: model.Object => TopLevelType.Object
-          case t: model.Trait => TopLevelType.Trait
-          case _ => error("Got something that wasn't a trait class or object in createClass'")
-        }).
+        tlt(tlt).
         in(Class.find(By(Class.entityToString, dte.inTemplate.toString)).openOr(error("Could not find " + in))
         ).saveMe
         dte.typeParams.map(tp=>tpp.parseParam(tp.name)).foreach(tp=>clas.typeParams += tp)
