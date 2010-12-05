@@ -7,7 +7,6 @@ import net.liftweb.common.{Box,Full,Empty,Failure,ParamFailure}
 
 import scala.tools.nsc.doc.{model, Universe}
 
-
 object Variance extends Enumeration {
   type Variance = Value
   val Covariant = Value("covariant")
@@ -188,7 +187,7 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
   
   object elements extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.id, Ascending)) //tuples
   object typeFK extends MappedLongForeignKey(this, Type) //foreign key for self referencing   
-  object typeParams extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.id, Ascending))  //Instance of 
+//  object typeParams extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.id, Ascending))  //Instance of 
   
   object concreteType extends MappedLongForeignKey(this, Class) 
 
@@ -216,9 +215,16 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
           {argTypes.parenList ++ <span class="funcArrow">{EntityRef("rArr")}</span> ++ this.res.obj.map(_.toXhtml).openOr(Text("ERRORTYPE"))}
         </span>
       }
-      case TypeVar => <span class="typeVar">{this.typeVar.is}</span>
-      case ConcreteType => <span class="concreteType">{this.concreteType.obj.map(_.toString).openOr("nope")}</span>
-      case ConcreteDummy => <span class="concreteType">{this.name.is}</span>
+      case TypeVar => <span class="typeVar" id={this.id.toString}>{this.typeVar.is}</span>
+      case ConcreteType => <span class="concreteType" id={this.id.toString}>{this.concreteType.obj.map(_.toString).openOr("nope")}</span>
+      case ConcreteDummy => <span class="concreteDummy" id={this.id.toString}>{this.name.is}</span>
+      case TypeApp =>
+        <span class="typeApp" id={this.id.toString}>
+          <span class="typeAppOp">{this.appOp.obj.map(_.toXhtml).openOr(Text("NOT FOUND"))}</span>
+          <span class="typeAppArgs">
+            [{(NodeSeq.Empty ++ this.typeArgs.map((n: Type) => <span class="typeAppArg">{n.toXhtml}</span>)).mkNodes(Text(", "))}]
+          </span>
+        </span>
       case Wildcard => Text("_")
       case _ => <span class="notdone">Not done</span>
     }
@@ -246,7 +252,7 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
     res.obj.isEmpty &&
     args.length == 0 &&
     elements.length > 0 &&
-    typeParams.length == 0
+    typeArgs.length == 0
   def isFunc = ""
   def isMethod = ""
   def isTypeVar = ""
@@ -254,7 +260,7 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
 }
 
 object Type extends Type with LongKeyedMetaMapper[Type] {
-  def createConcreteType(name: String, params: List[Type]) = {
+  def createConcreteType(name: String) = {
     val clas = Class.find(
       By(Class.entityToString, name)
     )
@@ -262,29 +268,25 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
       case Full(c) =>
         val t = Type.find(By(Type.concreteType, c))
         t match {
-          case Full(tt) => if (params.isEmpty) tt
-                           else Type.create.concreteType(c).typeType(TypeType.ConcreteType).saveMe
+          case Full(tt) => tt                           
           case Empty => Type.create.concreteType(c).typeType(TypeType.ConcreteType).saveMe
         }
       case _ => Type.create.name(name).typeType(TypeType.ConcreteDummy).saveMe
     }
-    params foreach(p=> ct.typeParams += p)
     ct.saveMe
   }  
   
-  //TODO finish me!
   def createTypeApp(typ: Type, args: List[Type]) = {
     require(typ.typeType == TypeVar || typ.typeType == ConcreteType || typ.typeType == ConcreteDummy)
-    val t = Type.create.appOp(typ).saveMe
+    val t = Type.create.typeType(TypeType.TypeApp).appOp(typ).saveMe
     for ((arg, i) <- args.zipWithIndex) {
       t.typeArgs += arg.typeArgOrder(i).saveMe
     }
-    //TODO: add relationship to type args
-  }
+    t.saveMe
+   }
   
-  def createTypeVar(name:String, params: List[Type]) = {   
+  def createTypeVar(name:String) = {   
     val t = Type.create.typeVar(name).typeType(TypeType.TypeVar)
-    params foreach {p => t.typeParams += p}
     t.saveMe
   }
   

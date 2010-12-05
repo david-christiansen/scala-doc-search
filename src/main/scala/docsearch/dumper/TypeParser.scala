@@ -226,24 +226,21 @@ class TypeParser(val lexical: TypeLexer = new TypeLexer) extends TokenParsers wi
   lazy val typeName: PackratParser[Type] =
     (elem("type name", _.isInstanceOf[lexical.Name]) ^^ {
       case lexical.Name(chars) => {
-        Type.createConcreteType(chars, List())
+        Type.createConcreteType(chars)
       }
      }) |
     (elem("qualified type name", _.isInstanceOf[lexical.NameWithQualified]) ^^ {
-      case lexical.NameWithQualified(_, qual) => Type.createConcreteType(qual, List())
+      case lexical.NameWithQualified(_, qual) => Type.createConcreteType(qual)
      })
 
   lazy val typeVar: PackratParser[Type] =
     elem("type variable", _.isInstanceOf[lexical.VarName]) ^^ {
-      case lexical.VarName(chars) => Type.createTypeVar(chars, List())
+      case lexical.VarName(chars) => Type.createTypeVar(chars)
     }
 
   lazy val generic: PackratParser[Type] =
     (typeName|typeVar)~(("["~>rep1sep(scalaType<~opt(bounds), ","))<~"]")<~rep("["~rep1sep(scalaType, ",")~"]") ^^ {
-      case name ~ args => 
-        if (name.typeType == TypeType.ConcreteType) 
-          Type.createConcreteType(name.concreteType.obj.get.name, args)
-        else Type.createTypeVar(name.typeVar, args)
+      case constructor ~ args => Type.createTypeApp(constructor, args)
       case _ => error("Failed to parse generic")
     }
 
