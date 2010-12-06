@@ -76,7 +76,8 @@ class ModelView {
 
     def inheritsFrom(c: types.Class): NodeSeq = 
       if (c.parents.length > 0)
-        Text(" extends ") ++ (NodeSeq.Empty ++ c.parents.flatMap(className)).mkNodes(Text(" with "))
+        Text(" extends ") ++ className(c.parents.head) ++ 
+        (NodeSeq.Empty ++ c.parents.tail.flatMap((c: types.Class) => Text(" with ") ++ className(c)))
       else NodeSeq.Empty
 
     def toggleChildren(parent: types.Class)(contents: NodeSeq): NodeSeq = {

@@ -22,6 +22,14 @@ object TopLevelType extends Enumeration {
   val Package = Value("package")
   val Class = Value("class")
   val Trait = Value("trait")
+
+  def topLevelFromTemplate(te: model.TemplateEntity) = {
+    if (te.isTrait) TopLevelType.Trait
+    else if (te.isObject) TopLevelType.Object
+    else if (te.isPackage) TopLevelType.Package
+    else TopLevelType.Class
+  }
+
 }
 
 import TopLevelType._
@@ -102,23 +110,23 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
     }
   }
   
-  def createRelationships(entityToString: String, parents: List[model.TemplateEntity]) = {
-    var clas = Class.find(By(Class.entityToString, entityToString)) openOr (error("Could not find " + entityToString))
-    val classTrait = List(TopLevelType.Class, TopLevelType.Trait)
-    for (p <- parents) p match {
-      case p: model.Package => {
-        val par = Class.find(By(Class.entityToString, p.toString)).openOr(error("Could not find package" + p.toString)).memberClasses += clas
-        par.save
-      }
-      case c: model.Class => 
-        clas.parents += Class.find(By(Class.entityToString, c.toString), ByList(Class.tlt, classTrait)).openOr(error("Could not find class" + c.toString))
-      case o: model.Object => 
-        clas.parents += Class.find(By(Class.entityToString, o.toString), ByList(Class.tlt, classTrait)).openOr(error("Could not find object" + o.toString))
-      case t: model.Trait => 
-        clas.parents += Class.find(By(Class.entityToString, t.toString), ByList(Class.tlt, classTrait)).openOr(error("Could not find trait" + t.toString))
-      case _ => ()
-    }
-    clas.save
+  def findForTE(clas: model.TemplateEntity): Box[Class] = {
+    Class.find(
+      By(Class.entityToString, clas.toString),
+      By(Class.tlt, TopLevelType.topLevelFromTemplate(clas))
+    )
+  }
+  
+  def addSupers(clas: model.DocTemplateEntity) = {
+    val me = findForTE(clas).open_!
+    
+    for (p <- clas.parentTemplates)
+      Class.find(
+        By(Class.entityToString, p.toString), 
+        By(Class.tlt, TopLevelType.topLevelFromTemplate(p))) foreach {me.parents += _}
+    //Note: Java superclasses don't get included.  This is a silly limitation that will one day be fixed.
+   
+    me.save
   }
   
   def createRootPackage(asString: String) = {
@@ -475,13 +483,10 @@ object Member extends Member with LongKeyedMetaMapper[Member] {
       case _ => None
     }
   }
+
   def createMember(member: model.MemberEntity) = {
     if (!(member.inheritedFrom.map(_.toString) exists (x => x == "scala.AnyRef" || x == "scala.Any"))) {
-      val containerType = 
-        if (member.inTemplate.isTrait) TopLevelType.Trait
-        else if (member.inTemplate.isObject) TopLevelType.Object
-        else if (member.inTemplate.isPackage) TopLevelType.Package
-        else TopLevelType.Class
+      val containerType = TopLevelType.topLevelFromTemplate(member.inTemplate)
 
       val mem = Member.create.
         entityToString(member.toString).

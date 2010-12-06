@@ -36,7 +36,7 @@ object DataDumper {
     println("Saving classes, traits, etc to db")
     classes.sortWith((x,y)=> x.toString.length < y.toString.length) foreach Class.createClass
     println("Saving inheritance graph to db")
-    classes.map(x => Class.createRelationships(x.toString, x.parentTemplates))
+    classes.map(Class.addSupers(_))
     
     val memCount = members.length
     println("Putting " + memCount + " members and their types in db")
