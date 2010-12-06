@@ -477,10 +477,16 @@ object Member extends Member with LongKeyedMetaMapper[Member] {
   }
   def createMember(member: model.MemberEntity) = {
     if (!(member.inheritedFrom.map(_.toString) exists (x => x == "scala.AnyRef" || x == "scala.Any"))) {
+      val containerType = 
+        if (member.inTemplate.isTrait) TopLevelType.Trait
+        else if (member.inTemplate.isObject) TopLevelType.Object
+        else if (member.inTemplate.isPackage) TopLevelType.Package
+        else TopLevelType.Class
+
       val mem = Member.create.
         entityToString(member.toString).
         name(member.name).
-        in(Class.find(By(Class.entityToString, member.inTemplate.toString)).openOr
+        in(Class.find(By(Class.entityToString, member.inTemplate.toString), By(Class.tlt, containerType)).openOr
           (error("Could not find class: " + member.inTemplate.toString))).
         //Vals, Vars and Lazy Vals all use the trait model.Val
         memType(if (member.isDef) MemType.Def
