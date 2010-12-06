@@ -347,6 +347,7 @@ class Arg extends LongKeyedMapper[Arg] with IdPK with ManyToMany{
   object member extends MappedLongForeignKey(this, Member)
   object order extends MappedInt(this)
   object listOrder extends MappedInt(this)
+  object isImplicit extends MappedBoolean(this)
   
   override def toString() = name + " : " + typ.obj.toString
 }
@@ -471,9 +472,9 @@ object Member extends Member with LongKeyedMetaMapper[Member] {
         var outer, inner = 0        
         for (argList <- d.valueParams) {
           inner = 0
-          for (arg <- argList if !arg.isImplicit){
+          for (arg <- argList){
             val argType = parseMethodArg(arg, d).get
-            mem.args += Arg.create.name(arg.name).typ(argType).order(inner).listOrder(outer).saveMe
+            mem.args += Arg.create.name(arg.name).typ(argType).isImplicit(arg.isImplicit).order(inner).listOrder(outer).saveMe
             inner += 1  
           }
           outer += 1

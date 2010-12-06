@@ -104,7 +104,11 @@ class ModelView {
     }
 
     def argNodes(arg: types.Arg): NodeSeq = 
-      <span class="arg">{Text(arg.name.is)}: {arg.typ.map(_.toXhtml).openOr(Text("ERROR"))}</span>
+      <span class="arg">
+        {if (arg.isImplicit) Text("Implicit") else NodeSeq.Empty}
+        {Text(arg.name.is)}: 
+        {arg.typ.map(_.toXhtml).openOr(Text("ERROR"))}
+      </span>
 
     def flattenNodes(ns: Seq[NodeSeq]): NodeSeq = 
       ns.foldLeft(NodeSeq.Empty) {(a: NodeSeq, b: NodeSeq) => a ++ b}
