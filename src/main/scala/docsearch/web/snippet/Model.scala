@@ -94,15 +94,13 @@ class ModelView {
       }
     }
 
-    def classIcon(c: types.Class): NodeSeq = c.tlt.is match {
-      case types.TopLevelType.Package => Text("[p]")
-      case types.TopLevelType.Object => Text("[o]")
-      case types.TopLevelType.Class => Text("[c]")
-      case types.TopLevelType.Trait => Text("[t]")
+    def classType(c: types.Class): NodeSeq = c.tlt.is match {
+      case types.TopLevelType.Package => Text("package")
+      case types.TopLevelType.Object => Text("object")
+      case types.TopLevelType.Class => Text("class")
+      case types.TopLevelType.Trait => Text("trait")
       case _ => Text ("[]")
     }
-
-    def memberIcon(m: types.Member): NodeSeq = Text("[m]")
 
     def argNodes(arg: types.Arg): NodeSeq = 
       <span class="arg">{Text(arg.name.is)}: {arg.typ.map(_.toXhtml).openOr(Text("ERROR"))}</span>
@@ -156,11 +154,10 @@ class ModelView {
 
     contains.flatMap((p: types.Class) => 
       bind("item", html, 
-           "icon" -> classIcon(p),
-           "name" -> toggleChildren(p)(className(p) ++ inheritsFrom(p)))
+           "name" -> toggleChildren(p)(classType(p) ++ Text(" ") ++ className(p) ++ inheritsFrom(p)))
     ) ++
     members.flatMap((m: types.Member) =>
-      bind("item", html, "icon" -> memberIcon(m), "name" -> memberNodes(m))
+      bind("item", html, "name" -> memberNodes(m))
     )
   }
 
