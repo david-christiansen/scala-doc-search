@@ -64,23 +64,23 @@ class Class extends LongKeyedMapper[Class] with IdPK with OneToMany[Long, Class]
   object entityToString extends MappedString(this, 200)
   object name extends MappedString(this, 100)
   object tlt extends MappedEnum[Class, TopLevelType.type](this, TopLevelType)
-  
+
   object typ extends MappedLongForeignKey(this, Type)
-  
+
   object in extends MappedLongForeignKey(this, Class)
   object memberClasses extends MappedOneToMany(Class, Class.in, OrderBy(Class.name, Ascending)) //Needed for in
-  
+
   object members extends MappedOneToMany(Member, Member.in, OrderBy(Member.id, Ascending))
-  
-  object children extends MappedManyToMany(Inheritance, Inheritance.children, Inheritance.parents, Class) 
+
+  object children extends MappedManyToMany(Inheritance, Inheritance.children, Inheritance.parents, Class)
   object parents extends MappedManyToMany(Inheritance, Inheritance.parents, Inheritance.children, Class)
-  
+
   object typeParams extends MappedOneToMany(TypeParam, TypeParam.clas, OrderBy(TypeParam.order, Ascending))
   //TODO Add contructor to Classes
   object constructor extends MappedLongForeignKey(this, Arg)
 
   def path = this.in.obj.map(List(_)).openOr(List()) ++ List(this)
-  
+
   override def toString() = {
     //FIXME add type params and such
     path.map(_.name.is).mkString(".")
@@ -88,7 +88,7 @@ class Class extends LongKeyedMapper[Class] with IdPK with OneToMany[Long, Class]
 }
 
 object Class extends Class with LongKeyedMetaMapper[Class] {
-  
+
   //creates a class, trait or object
   def createClass(dte: model.DocTemplateEntity) = {
     val tpp = new TPParser
@@ -106,36 +106,36 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
           Class.find(By(Class.entityToString, dte.inTemplate.toString)).openOr(error("Could not find " + in))
         ).saveMe
         dte.typeParams.map(tp=>tpp.parseParam(tp.name)).foreach(tp=>clas.typeParams += tp)
-        clas.save        
+        clas.save
     }
   }
-  
+
   def findForTE(clas: model.TemplateEntity): Box[Class] = {
     Class.find(
       By(Class.entityToString, clas.toString),
       By(Class.tlt, TopLevelType.topLevelFromTemplate(clas))
     )
   }
-  
+
   def addSupers(clas: model.DocTemplateEntity) = {
     val me = findForTE(clas).open_!
-    
+
     for (p <- clas.parentTemplates)
       Class.find(
-        By(Class.entityToString, p.toString), 
+        By(Class.entityToString, p.toString),
         By(Class.tlt, TopLevelType.topLevelFromTemplate(p))) foreach {me.parents += _}
     //Note: Java superclasses don't get included.  This is a silly limitation that will one day be fixed.
-   
+
     me.save
   }
-  
+
   def createRootPackage(asString: String) = {
-    Class.find(By(Class.entityToString, asString)) openOr 
+    Class.find(By(Class.entityToString, asString)) openOr
       Class.create.entityToString(asString).name(asString).tlt(TopLevelType.Package).saveMe
     }
-    
+
   def createPackage(pack: model.Package): Class = {
-    Class.find(By(Class.entityToString, pack.toString)) openOr 
+    Class.find(By(Class.entityToString, pack.toString)) openOr
       Class.create.
         entityToString(pack.toString).
         name(pack.name).
@@ -148,7 +148,7 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
 
 //Inheritance middle table
 class Inheritance extends Mapper[Inheritance] {
-  def getSingleton = Inheritance  
+  def getSingleton = Inheritance
   object children extends MappedLongForeignKey(this, Class)
   object parents extends MappedLongForeignKey(this, Class)
 }
@@ -165,22 +165,22 @@ class TypeParam extends LongKeyedMapper[TypeParam] with IdPK with OneToMany[Long
   object parent extends MappedLongForeignKey(this, TypeParam) // NULL if top-level
   object member extends MappedLongForeignKey(this, Member)
   object clas extends MappedLongForeignKey(this, Class)
-  
+
   def isTop: Boolean = {
     this.parent.obj match {
       case Full(_) => false
       case _ => true
     }
   }
-  
+
   override def toString() = {
     name.is +
     (this.params.all match {
       case Nil => ""
-      case ps => "[" + ps.map(_.toString).mkString(",") + "]" 
+      case ps => "[" + ps.map(_.toString).mkString(",") + "]"
     }) +
     (if (this.isTop) {
-      " : " + 
+      " : " +
       (kind.obj match {
         case Full(k) => k.toString
         case _ => "error finding kind"
@@ -196,27 +196,27 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
   def getSingleton = Type
   object typeType extends MappedEnum[Type, TypeType.type](this, TypeType) // Type of Type
   object typeVar extends MappedString(this, 100)             //typeVar
-  object res extends MappedLongForeignKey(this, Type)     //method or function   
+  object res extends MappedLongForeignKey(this, Type)     //method or function
   object args extends MappedOneToMany(Arg, Arg.in, OrderBy(Arg.id, Ascending)) //list of args
-  
+
   object elements extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.id, Ascending)) //tuples
-  object typeFK extends MappedLongForeignKey(this, Type) //foreign key for self referencing   
-//  object typeParams extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.id, Ascending))  //Instance of 
-  
-  object concreteType extends MappedLongForeignKey(this, Class) 
+  object typeFK extends MappedLongForeignKey(this, Type) //foreign key for self referencing
+//  object typeParams extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.id, Ascending))  //Instance of
+
+  object concreteType extends MappedLongForeignKey(this, Class)
 
   object name extends MappedString(this, 100)
 
   object traits extends MappedOneToMany(Class, Class.typ, OrderBy(Class.id, Ascending))
-  
+
   object appOp extends MappedLongForeignKey(this, Type)
   object typeArgOrder extends MappedInt(this)
   object typeArgs extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.typeArgOrder, Ascending))
-  
+
   def toXhtml: scala.xml.NodeSeq = {
     import scala.xml._
     import docsearch.utils._
-        
+
     this.typeType match {
       case Tuple => {
         val contentNodes: NodeSeq = this.elements.flatMap(_.toXhtml)
@@ -260,9 +260,9 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
     }
   }
 
-  
+
   //TODO validation
-  def isTuple: Boolean = 
+  def isTuple: Boolean =
     res.obj.isEmpty &&
     args.length == 0 &&
     elements.length > 0 &&
@@ -282,14 +282,14 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
       case Full(c) =>
         val t = Type.find(By(Type.concreteType, c))
         t match {
-          case Full(tt) => tt                           
+          case Full(tt) => tt
           case Empty => Type.create.concreteType(c).typeType(TypeType.ConcreteType).saveMe
         }
       case _ => Type.create.name(name).typeType(TypeType.ConcreteDummy).saveMe
     }
     ct.saveMe
-  }  
-  
+  }
+
   def createTypeApp(typ: Type, args: List[Type]) = {
     require(typ.typeType == TypeVar || typ.typeType == ConcreteType || typ.typeType == ConcreteDummy)
     val t = Type.create.typeType(TypeType.TypeApp).appOp(typ).saveMe
@@ -298,32 +298,32 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
     }
     t.saveMe
    }
-  
-  def createTypeVar(name:String) = {   
+
+  def createTypeVar(name:String) = {
     val t = Type.create.typeVar(name).typeType(TypeType.TypeVar)
     t.saveMe
   }
-  
+
   def addTraits(name: Type, traits: List[Type]) = {
     for (t <- traits if (t.typeType == TypeType.ConcreteType))
       name.traits += t.concreteType.obj.openOr(error("Could not retrieve class while adding traits: " + t))
     name.saveMe
   }
-  
+
   def createFunction(args: List[List[Type]], res: Type) = {
-    val method = Type.create.typeType(TypeType.Function).res(res).saveMe 
-    var outer, inner = 0        
+    val method = Type.create.typeType(TypeType.Function).res(res).saveMe
+    var outer, inner = 0
       for (argList <- args) {
         inner = 0
         for (arg <- argList) {
-          method.args += Arg.create.name("anonymous").typ(arg).order(inner).listOrder(outer).saveMe
-          inner += 1  
+          method.args += arg.create.name("anonymous").typ(arg).order(inner).listOrder(outer).saveMe
+          inner += 1
         }
         outer += 1
-      } 
+
     method.saveMe
   }
-  
+
   def createTuple(elems: List[Type]) = {
     require(elems.length >= 1) // All tuples have at least 1 element
     var tuple = Type.create.typeType(TypeType.Tuple)
@@ -332,7 +332,7 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
     assert(tuple.elements.length > 0)
     tuple
   }
-  
+
   def wildcard() = {
     Type.find(By(Type.typeType, Wildcard)) openOr Type.create.typeType(Wildcard).saveMe
   }
@@ -348,7 +348,7 @@ class Arg extends LongKeyedMapper[Arg] with IdPK with ManyToMany{
   object order extends MappedInt(this)
   object listOrder extends MappedInt(this)
   object isImplicit extends MappedBoolean(this)
-  
+
   override def toString() = name + " : " + typ.obj.toString
 }
 
@@ -378,7 +378,7 @@ class Kind extends LongKeyedMapper[Kind] with IdPK {
     }
   }
 
-  def isValid(): Boolean = 
+  def isValid(): Boolean =
     (this.from.obj.isEmpty == this.to.obj.isEmpty)
 
   def isNullary(): Boolean =
@@ -387,7 +387,7 @@ class Kind extends LongKeyedMapper[Kind] with IdPK {
 
 object Kind extends Kind with LongKeyedMetaMapper[Kind] {
   // kind *
-  def nullary() = 
+  def nullary() =
     Kind.find(By(Kind.from, Empty), By(Kind.to, Empty)) openOr Kind.create.saveMe
   // kind _ --> _
   def arrow(f: Kind, t: Kind): Kind = {
@@ -415,10 +415,10 @@ class Member extends LongKeyedMapper[Member] with IdPK with OneToMany[Long, Memb
   object memType extends MappedEnum[Member,MemType.type](this, MemType)
   object resultType extends MappedLongForeignKey(this, Type)
   object args extends MappedOneToMany(Arg, Arg.member, OrderBy(Arg.listOrder, Ascending))
-  
+
   def getArgLists(): List[List[Arg]] = {
     // lists gets the argument lists in the correct order, split from one big list
-    val lists: List[List[Arg]] = 
+    val lists: List[List[Arg]] =
       args.groupBy(_.listOrder.is).toList.sortWith(_._1 < _._1).map(_._2.toList)
     //Now sort the individual argument lists
     lists map {l: List[Arg] => l.sortWith(_.order.is < _.order.is)}
@@ -437,13 +437,13 @@ object Member extends Member with LongKeyedMetaMapper[Member] {
     }
 
     def extractTypeQualifiers(entity: model.TypeEntity): Map[String, String] = {
-      (for ((start, (t, end)) <- entity.refEntity) 
+      (for ((start, (t, end)) <- entity.refEntity)
        yield (entity.name.substring(start, start+end) -> t.toString)).toMap
     }
-    
+
     def parseResultType(d: model.Entity{val resultType: model.TypeEntity}): Option[Type] = {
       val parser = new TypeParser(new ScalaDocTypeLexer(
-        extractTypeVars(d), 
+        extractTypeVars(d),
         extractTypeQualifiers(d.resultType)
       ))
       parser.parse(d.resultType.name.replace("\u21d2","=>")) match {
@@ -452,7 +452,7 @@ object Member extends Member with LongKeyedMetaMapper[Member] {
         case _ => None
       }
     }
-    
+
     def parseMethodArg(d: model.Entity{val resultType: model.TypeEntity}, inMethod: model.Entity): Option[Type] = {
       val methTVars = extractTypeVars(inMethod)
       val methTQual = extractTypeQualifiers(d.resultType)
@@ -469,16 +469,16 @@ object Member extends Member with LongKeyedMetaMapper[Member] {
         mem.resultType(parseResultType(v).get).save
       }
       case d: model.Def => {
-        var outer, inner = 0        
+        var outer, inner = 0
         for (argList <- d.valueParams) {
           inner = 0
           for (arg <- argList){
             val argType = parseMethodArg(arg, d).get
             mem.args += Arg.create.name(arg.name).typ(argType).isImplicit(arg.isImplicit).order(inner).listOrder(outer).saveMe
-            inner += 1  
+            inner += 1
           }
           outer += 1
-        }        
+        }
         mem.resultType(parseResultType(d).get).save
       }
       case _ => None
@@ -509,7 +509,7 @@ object Member extends Member with LongKeyedMetaMapper[Member] {
         }
       mem.save
       constructMemberTypes(member, mem)
-    }   
+    }
   }
 }
 
