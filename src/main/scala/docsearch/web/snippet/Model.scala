@@ -62,17 +62,34 @@ class ModelView {
       OrderBy(types.Member.name, Ascending)
     )
     
+    def className(c: types.Class): NodeSeq = {
+      <span class="className" id={c.id.toString}>{c.name.is}</span> ++ 
+      (if (c.typeParams.length > 0)
+        <span class="typeParams">
+          {(NodeSeq.Empty ++ c.typeParams.map {
+            tp: types.TypeParam => <span class="typeParam">{tp.name.is}</span>
+            }).mkNodes(Text("["), Text(", "), Text("]"))
+          }
+        </span>
+      else NodeSeq.Empty)
+    }
+
+    def inheritsFrom(c: types.Class): NodeSeq = 
+      if (c.parents.length > 0)
+        Text(" extends ") ++ (NodeSeq.Empty ++ c.parents.flatMap(className)).mkNodes(Text(" with "))
+      else NodeSeq.Empty
+
     def toggleChildren(parent: types.Class)(contents: NodeSeq): NodeSeq = {
       val id: String = nextFuncName
       val childId: String = nextFuncName
       
       a(contents, "id" -> id) {
         val children = packageList(parent)(html)
-        val childList = <ul id={childId}>{children}</ul>
+        val childData = <ul id={childId}>{children}</ul>
         JsIf(
           JsGt(JqId(childId)~>JsMem("length"), JsRaw("0")), 
           JqId(childId)~>JqRemove(),
-          JqId(id)~>JqAfter(childList)
+          JqId(id)~>JqAfter(childData)
         )
       }
     }
@@ -140,10 +157,7 @@ class ModelView {
     contains.flatMap((p: types.Class) => 
       bind("item", html, 
            "icon" -> classIcon(p),
-           "name" -> 
-             toggleChildren(p)(Text(p.name.is + (
-               if (p.typeParams.length > 0) p.typeParams.map(_.name.is).mkString("[", ", ", "]") else ""
-             ))))
+           "name" -> toggleChildren(p)(className(p) ++ inheritsFrom(p)))
     ) ++
     members.flatMap((m: types.Member) =>
       bind("item", html, "icon" -> memberIcon(m), "name" -> memberNodes(m))

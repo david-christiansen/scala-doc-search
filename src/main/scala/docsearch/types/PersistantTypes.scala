@@ -94,7 +94,8 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
       val clas = Class.create.entityToString(dte.toString).
         name(dte.name).
         tlt(tlt).
-        in(Class.find(By(Class.entityToString, dte.inTemplate.toString)).openOr(error("Could not find " + in))
+        in(
+          Class.find(By(Class.entityToString, dte.inTemplate.toString)).openOr(error("Could not find " + in))
         ).saveMe
         dte.typeParams.map(tp=>tpp.parseParam(tp.name)).foreach(tp=>clas.typeParams += tp)
         clas.save        
@@ -103,14 +104,18 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
   
   def createRelationships(entityToString: String, parents: List[model.TemplateEntity]) = {
     var clas = Class.find(By(Class.entityToString, entityToString)) openOr (error("Could not find " + entityToString))
+    val classTrait = List(TopLevelType.Class, TopLevelType.Trait)
     for (p <- parents) p match {
       case p: model.Package => {
         val par = Class.find(By(Class.entityToString, p.toString)).openOr(error("Could not find package" + p.toString)).memberClasses += clas
         par.save
       }
-      case c: model.Class => clas.parents += Class.find(By(Class.entityToString, c.toString)).openOr(error("Could not find class" + c.toString))
-      case o: model.Object => clas.parents += Class.find(By(Class.entityToString, o.toString)).openOr(error("Could not find object" + o.toString))
-      case t: model.Trait => clas.parents += Class.find(By(Class.entityToString, t.toString)).openOr(error("Could not find trait" + t.toString))
+      case c: model.Class => 
+        clas.parents += Class.find(By(Class.entityToString, c.toString), ByList(Class.tlt, classTrait)).openOr(error("Could not find class" + c.toString))
+      case o: model.Object => 
+        clas.parents += Class.find(By(Class.entityToString, o.toString), ByList(Class.tlt, classTrait)).openOr(error("Could not find object" + o.toString))
+      case t: model.Trait => 
+        clas.parents += Class.find(By(Class.entityToString, t.toString), ByList(Class.tlt, classTrait)).openOr(error("Could not find trait" + t.toString))
       case _ => ()
     }
     clas.save
