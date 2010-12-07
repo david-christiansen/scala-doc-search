@@ -58,6 +58,24 @@ object MemType extends Enumeration {
 
 import MemType._
 
+object Utils {
+  def extractTypeVars(d: model.Entity): List[String] = {
+    val tvs = for (entity <- d.toRoot.reverse) yield entity match {
+      case dte: model.DocTemplateEntity => dte.typeParams map (_.name)
+      case fn: model.Def => fn.typeParams map (_.name)
+      case _ => List()
+    }
+    tvs.flatten
+  }
+
+  def extractTypeQualifiers(entity: model.TypeEntity): Map[String, String] = {
+    (for ((start, (t, end)) <- entity.refEntity)
+     yield (entity.name.substring(start, start+end) -> t.toString)).toMap
+  }
+}
+
+import Utils._
+
 //Class, Object, Trait, Package
 class Class extends LongKeyedMapper[Class] with IdPK with OneToMany[Long, Class] with ManyToMany {
   def getSingleton = Class
@@ -119,13 +137,18 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
   def addSupers(clas: model.DocTemplateEntity) = {
     val me = findForTE(clas).open_!
 
-    for (p <- clas.parentTemplates) {
-      println(p.toString+":")
-      if (p.isInstanceOf[model.DocTemplateEntity])
-        p.asInstanceOf[model.DocTemplateEntity].typeParams foreach {p => println("  * "+p)}
-      else
-        println("  * Not DTE")
+    clas.parentType foreach { te: model.TypeEntity =>
+      val types = extractTypeQualifiers(te)
+      val typeVars = extractTypeVars(clas)
+      te.name.split(" with ") foreach { name: String =>
+        val parser = new TypeParser(new ScalaDocTypeLexer(typeVars, types))
+        parser.parse(name.replace("\u21d2","=>")) match {
+          case parser.Success(t, _) => if (name contains "BitSet") println(name + " parsed as " + t + " during " + clas.toString); me.parents += t
+          case _ => println("Couldn't parse parent type " + name)
+        }
+      }
     }
+
     //Note: Java superclasses don't get included.  This is a silly limitation that will one day be fixed.
 
     me.save
@@ -257,7 +280,7 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
       case TypeVar => this.typeVar.is
       case ConcreteType => this.concreteType.obj.map(_.toString).openOr("nope")
       case ConcreteDummy => this.name.is
-      case TypeApp => this.appOp.toString + this.typeArgs.map(_.toString).mkString("[", ", ", "]")
+      case TypeApp => this.appOp.obj.openOr("NOT FOUND!!").toString + this.typeArgs.map(_.toString).mkString("[", ", ", "]")
       case Wildcard => "_"
     }
   }
@@ -281,12 +304,7 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
       By(Class.entityToString, name)
     )
     val ct = clas match {
-      case Full(c) =>
-        val t = Type.find(By(Type.concreteType, c))
-        t match {
-          case Full(tt) => tt
-          case Empty => Type.create.concreteType(c).typeType(TypeType.ConcreteType).saveMe
-        }
+      case Full(c) => Type.create.concreteType(c).typeType(TypeType.ConcreteType).saveMe
       case _ => Type.create.name(name).typeType(TypeType.ConcreteDummy).saveMe
     }
     ct.saveMe
@@ -294,9 +312,17 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
 
   def createTypeApp(typ: Type, args: List[Type]) = {
     require(typ.typeType == TypeVar || typ.typeType == ConcreteType || typ.typeType == ConcreteDummy)
+
     val t = Type.create.typeType(TypeType.TypeApp).appOp(typ).saveMe
     for ((arg, i) <- args.zipWithIndex) {
+      arg.save
       t.typeArgs += arg.typeArgOrder(i).saveMe
+    }
+    t.save
+    if (typ.toString contains "BitSet") {
+      print(t + " ")
+      for (a <- t.typeArgs) print(a.id.is + " ")
+      println()
     }
     t.saveMe
    }
@@ -337,7 +363,7 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
   }
 
   def wildcard() = {
-    Type.find(By(Type.typeType, Wildcard)) openOr Type.create.typeType(Wildcard).saveMe
+    Type.create.typeType(Wildcard).saveMe
   }
 }
 
@@ -430,20 +456,6 @@ class Member extends LongKeyedMapper[Member] with IdPK with OneToMany[Long, Memb
 
 object Member extends Member with LongKeyedMetaMapper[Member] {
   def constructMemberTypes(entity: model.Entity, mem: Member) = {
-    def extractTypeVars(d: model.Entity): List[String] = {
-      val tvs = for (entity <- d.toRoot.reverse) yield entity match {
-        case dte: model.DocTemplateEntity => dte.typeParams map (_.name)
-        case fn: model.Def => fn.typeParams map (_.name)
-        case _ => List()
-      }
-      tvs.flatten
-    }
-
-    def extractTypeQualifiers(entity: model.TypeEntity): Map[String, String] = {
-      (for ((start, (t, end)) <- entity.refEntity)
-       yield (entity.name.substring(start, start+end) -> t.toString)).toMap
-    }
-
     def parseResultType(d: model.Entity{val resultType: model.TypeEntity}): Option[Type] = {
       val parser = new TypeParser(new ScalaDocTypeLexer(
         extractTypeVars(d),
