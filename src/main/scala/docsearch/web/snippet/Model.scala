@@ -67,7 +67,7 @@ class ModelView {
       (if (c.typeParams.length > 0)
         <span class="typeParams">
           {(NodeSeq.Empty ++ c.typeParams.map {
-            tp: types.TypeParam => <span class="typeParam">{tp.name.is}</span>
+            tp: types.TypeParam => <span class="typeParam" id={tp.id.toString}>{tp.name.is}</span>
             }).mkNodes(Text("["), Text(", "), Text("]"))
           }
         </span>
@@ -126,7 +126,9 @@ class ModelView {
       val typeParams = {
         if (m.typeParams.length == 0) NodeSeq.Empty
         else {
-          val params: NodeSeq = m.typeParams map {p: types.TypeParam => <span class="typeParam">{p.name.is}</span>}
+          val params: NodeSeq = m.typeParams map {
+            p: types.TypeParam => <span class="typeParam" id={p.id.toString}>{p.name.is}</span>
+          }
           <span class="typeParams">{params.mkNodes(Text("["), Text(", "), Text("]"))}</span>
         }
       }
