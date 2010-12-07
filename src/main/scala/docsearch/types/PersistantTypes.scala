@@ -72,8 +72,7 @@ class Class extends LongKeyedMapper[Class] with IdPK with OneToMany[Long, Class]
 
   object members extends MappedOneToMany(Member, Member.in, OrderBy(Member.id, Ascending))
 
-  object children extends MappedManyToMany(Inheritance, Inheritance.children, Inheritance.parents, Class)
-  object parents extends MappedManyToMany(Inheritance, Inheritance.parents, Inheritance.children, Class)
+  object parents extends MappedManyToMany(Inheritance, Inheritance.children, Inheritance.parents, Type)
 
   object typeParams extends MappedOneToMany(TypeParam, TypeParam.clas, OrderBy(TypeParam.order, Ascending))
   //TODO Add contructor to Classes
@@ -120,10 +119,13 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
   def addSupers(clas: model.DocTemplateEntity) = {
     val me = findForTE(clas).open_!
 
-    for (p <- clas.parentTemplates)
-      Class.find(
-        By(Class.entityToString, p.toString),
-        By(Class.tlt, TopLevelType.topLevelFromTemplate(p))) foreach {me.parents += _}
+    for (p <- clas.parentTemplates) {
+      println(p.toString+":")
+      if (p.isInstanceOf[model.DocTemplateEntity])
+        p.asInstanceOf[model.DocTemplateEntity].typeParams foreach {p => println("  * "+p)}
+      else
+        println("  * Not DTE")
+    }
     //Note: Java superclasses don't get included.  This is a silly limitation that will one day be fixed.
 
     me.save
@@ -150,7 +152,7 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
 class Inheritance extends Mapper[Inheritance] {
   def getSingleton = Inheritance
   object children extends MappedLongForeignKey(this, Class)
-  object parents extends MappedLongForeignKey(this, Class)
+  object parents extends MappedLongForeignKey(this, Type)
 }
 
 object Inheritance extends Inheritance with MetaMapper[Inheritance]
@@ -313,13 +315,14 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
   def createFunction(args: List[List[Type]], res: Type) = {
     val method = Type.create.typeType(TypeType.Function).res(res).saveMe
     var outer, inner = 0
-      for (argList <- args) {
-        inner = 0
-        for (arg <- argList) {
-          method.args += arg.create.name("anonymous").typ(arg).order(inner).listOrder(outer).saveMe
-          inner += 1
-        }
-        outer += 1
+    for (argList <- args) {
+      inner = 0
+      for (arg <- argList) {
+        method.args += Arg.create.name("anonymous").typ(arg).order(inner).listOrder(outer).saveMe
+        inner += 1
+      }
+      outer += 1
+    }
 
     method.saveMe
   }
