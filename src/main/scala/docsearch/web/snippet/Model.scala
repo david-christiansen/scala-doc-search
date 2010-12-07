@@ -44,13 +44,13 @@ class ModelView {
 
   def packageList(lookIn: types.Class)(html:NodeSeq): NodeSeq = {
     val contains = types.Class.findAll(
-      By(types.Class.in, lookIn), 
+      By(types.Class.in, lookIn),
       ByList(
-        types.Class.tlt, 
+        types.Class.tlt,
         List(
-          types.TopLevelType.Package, 
-          types.TopLevelType.Object, 
-          types.TopLevelType.Class, 
+          types.TopLevelType.Package,
+          types.TopLevelType.Object,
+          types.TopLevelType.Class,
           types.TopLevelType.Trait
         )
       ),
