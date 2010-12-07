@@ -6,18 +6,21 @@ import docsearch.types.Member
 
 import net.liftweb.mapper._
 
-case class Type(str: String)
+case class Type(str: String, typeParams: List[Type]){
+  override def toString = str + {if (!typeParams.isEmpty) typeParams.mkString("[", ",", "]") else ""}
+}
 
 case class Query( path: Option[QPath], 
                   memType: Option[MemType],
                   name: Option[String],
                   args: List[List[QArg]],
                   resultType: Type) {
-  def findMatching(): List[Member] = {
-    val queryParams = 
-      (memType map (By(Member.memType, _)) toList) ++
-      (name map (By(Member.name, _)) toList) /* FIXME Add the rest! */
-    Member.findAll(queryParams:_*)
+  override def toString = {
+    "\n\tpath: " + path.toString +
+    "\n\tmem type: " + memType.toString +
+    "\n\tname: " + name.toString +
+    "\n\targs: " + args.toString + 
+    "\n\tresult type: " + resultType
   }
 }
                   
