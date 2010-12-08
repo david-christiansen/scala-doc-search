@@ -6,9 +6,12 @@ import docsearch.types.Member
 
 import net.liftweb.mapper._
 
-case class QType(str: String, typeParams: List[QType]){
-  override def toString = str + {if (!typeParams.isEmpty) typeParams.mkString("[", ",", "]") else ""}
-}
+sealed abstract class QType
+case class QTuple(elems: List[QType]) extends QType
+case class QFunc(args: List[QType]) extends QType
+case class QTVar(name: String) extends QType
+case class QTName(name: String) extends QType
+case class QTApp(op: QType, args: List[QType]) extends QType
 
 case class Query( path: Option[QPath],
                   memType: Option[MemType],
