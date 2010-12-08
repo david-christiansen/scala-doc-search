@@ -10,7 +10,7 @@ case class QType(str: String, typeParams: List[QType]){
   override def toString = str + {if (!typeParams.isEmpty) typeParams.mkString("[", ",", "]") else ""}
 }
 
-case class Query( path: Option[QPath], 
+case class Query( path: Option[QPath],
                   memType: Option[MemType],
                   name: Option[String],
                   args: List[List[QArg]],
@@ -19,22 +19,21 @@ case class Query( path: Option[QPath],
     "Query: path: " + path.toString +
     "\n\tmem type: " + memType.toString +
     "\n\tname: " + name.toString +
-    "\n\targs: " + args.toString + 
+    "\n\targs: " + args.toString +
     "\n\tresult type: " + resultType
   }
   def findMatching(): List[Member] = {
-    val queryParams = 
+    val queryParams =
       //FIXME this path is wrong
-      List(Like(Member.entityToString, path.toString + "#%")) ++
+      /* List(Like(Member.entityToString, path.toString + "#%")) ++ */
       (memType map (By(Member.memType, _)) toList) ++
       (name map (By(Member.name, _)) toList) //++
       //(args) ++
       //(resultType)
-      
     Member.findAll(queryParams:_*)
   }
 }
-                  
+
 case class QPath(components: List[String]){
   override def toString = components.mkString(".")
 }

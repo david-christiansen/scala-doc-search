@@ -28,15 +28,15 @@ class SearchState[A](start: A, neighborFinders: (A => Traversable[(A, Double)])*
   fringe.enqueue(SearchNode(start, 0))
   seen += start
 
-  def hasMore(): Boolean = fringe.size < 1
+  def hasMore(): Boolean = fringe.size > 1
 
-  def step(): Option[A] = {  
-    if (hasMore) None
-    else { 
+  def step(): Option[A] = {
+    if (!hasMore) None
+    else {
       val next = fringe.dequeue
       for ((neighbor, cost) <- getNeighbors(next.item)) {
         assert(cost >= 0)
-        if (!seen.contains(neighbor)){
+        if (!seen.contains(neighbor)) {
           seen += neighbor
           fringe.enqueue(SearchNode(neighbor, cost + next.cost))
         }
@@ -51,20 +51,3 @@ class SearchState[A](start: A, neighborFinders: (A => Traversable[(A, Double)])*
   lazy val results = Stream.continually(step)
 }
 
-object testSearch extends QueryParser with Application {  
-  
-  def test():Unit = {
-    print("------SEARCH> ")
-    val input = Console.readLine()
-    if (input != "q") {
-      val res = Search.search(input)
-      res match {
-        case Some(r) => r.results.take(10) foreach println
-        case None => println("There was an error in your query")
-      }
-      test()
-    } 
-  }
-
-  test()
-}

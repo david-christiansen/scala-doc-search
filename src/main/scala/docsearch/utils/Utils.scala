@@ -1,5 +1,6 @@
 package docsearch
 import scala.xml.{NodeSeq, Text, Node}
+import net.liftweb.common._
 
 package object utils {
   class NodePimp(nodes: NodeSeq) {
@@ -15,5 +16,12 @@ package object utils {
   }
   implicit def pimpMyNodes(nodes: NodeSeq): NodePimp = new NodePimp(nodes)
 
-  
+  class StringPimp(str: String) {
+    def parseInt: Box[Int] = try {
+      Full(str.toInt)
+    } catch {
+      case e: java.lang.NumberFormatException => Empty
+    }
+  }
+  implicit def pimpMyStrings(str: String): StringPimp = new StringPimp(str)
 }
