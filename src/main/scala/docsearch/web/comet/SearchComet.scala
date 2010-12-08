@@ -16,9 +16,8 @@ import net.liftweb.http.js.JE.Str
 
 import docsearch.search._
 import docsearch.query._
-import docsearch.dumper._
 
-class Search extends CometActor with CometListener {
+class SearchComet extends CometActor with CometListener {
   override def defaultPrefix = Full("search")
 
   def registerWith = SearchServer.getServer(term)
@@ -29,23 +28,19 @@ class Search extends CometActor with CometListener {
 
   private var results: List[String] = Nil
 
-  private val parser = new QueryParser
-  
-  private val tpparser = new TPParser
 
   private def renderResults = {
-    parser.parse(term, parser.query) match {
-      case parser.Success(_, _) => { 
-        val resHtml = results.drop(from).take(count).flatMap(r => <li>{r}</li>)
+    Search.search(term) match {
+      case Some(res) => { 
+        val resHtml = res.results.drop(from).take(count).flatMap(r => <li>{r}</li>)
         <ul>{resHtml}</ul>
       }
-      case _ => <div>Could not parse <pre>{term}</pre></div>
+      case None => <div>Could not parse <pre>{term}</pre></div>
     }
   }
-
+  
   def render = bind("search", 
                     "search" -> ajaxText(term, doSearch _),
-                    "debug" -> typeParamParser, 
                     "next" -> a(doNext _, Text("Next >>")),
                     "prev" -> (if (from <= 0) Text("<< Prev") else a(doPrev _, Text("<< Prev"))),
                     "count" -> ajaxSelectObj[Int](1 to 5 map (x => (x * 10) -> (x * 10).toString), Full(count), setCount _),
@@ -62,31 +57,6 @@ class Search extends CometActor with CometListener {
       results = List("failure", msg toString)
       reRender(false)
     }
-  }
-
-  private def typeParamParser() = {
-    val res = tpparser.parse(term, tpparser.param)
-    <dl>
-      <dt>res.toString</dt>
-    </dl>
-  }
-
-  private def parsed() = {
-    var scan = new parser.lexical.Scanner(term)
-    var lexed = collection.mutable.ListBuffer[parser.lexical.Token]()
-    while (!scan.atEnd) {
-      lexed += scan.first
-      scan = scan.rest
-    }
-    val tokens = lexed.toList map {
-      tok: parser.lexical.Token => <li>{tok.toString}</li>
-    }
-    <dl>
-      <dt>Tokens</dt>
-      <dd><ul>{tokens}</ul></dd>
-      <dt>Query</dt>
-      <dd>{parser.parse(term, parser.query).toString}</dd>
-    </dl>  
   }
 
   private def doSearch(newTerm: String) = {

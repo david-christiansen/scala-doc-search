@@ -145,11 +145,11 @@ class QueryParser(val lexical: QueryLexer = new QueryLexer) extends TokenParsers
       case mt~n~al => (mt, n, al)
     }
 
-  lazy val typ: PackratParser[Type] = elem("type", _.isInstanceOf[lexical.Id] )~opt(typeParam) ^^ {
-    case lexical.Id(x)~p => Type(x, p.toList.flatten)
+  lazy val typ: PackratParser[QType] = elem("type", _.isInstanceOf[lexical.Id] )~opt(typeParam) ^^ {
+    case lexical.Id(x)~p => QType(x, p.toList.flatten)
   }
   
-  lazy val typeParam: PackratParser[List[Type]] = "["~>repsep(typ, ",")<~"]"
+  lazy val typeParam: PackratParser[List[QType]] = "["~>repsep(typ, ",")<~"]"
   
   lazy val hash: PackratParser[Any] = elem("'#'", {
     case lexical.Reserved("#") => true

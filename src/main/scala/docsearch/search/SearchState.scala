@@ -1,7 +1,5 @@
 package docsearch.search
 import docsearch.query.{QueryParser, Query}
-import docsearch.types._
-import net.liftweb.mapper._
 
 import scala.collection.mutable.{PriorityQueue, Set}
 
@@ -18,8 +16,8 @@ object SearchNode {
    new Ordering[SearchNode[A]] {
      override def compare(n1: SearchNode[A], n2: SearchNode[A]): Int =
        if (n1.cost == n2.cost) 0
-       else if (n1.cost < n2.cost) -1
-       else 1
+       else if (n1.cost < n2.cost) 1
+       else -1
    }
 }
 
@@ -32,16 +30,19 @@ class SearchState[A](start: A, neighborFinders: (A => Traversable[(A, Double)])*
 
   def hasMore(): Boolean = fringe.size < 1
 
-  def step(): A = {
+  def step(): Option[A] = {  
+    if (hasMore) None
+    else { 
       val next = fringe.dequeue
-      println(next)
-      seen += next.item
       for ((neighbor, cost) <- getNeighbors(next.item)) {
         assert(cost >= 0)
-        if (!seen.contains(neighbor))
+        if (!seen.contains(neighbor)){
+          seen += neighbor
           fringe.enqueue(SearchNode(neighbor, cost + next.cost))
+        }
       }
-      next.item
+      Some(next.item)
+    }
   }
 
   def getNeighbors(item: A): Traversable[(A, Double)] =
@@ -50,34 +51,17 @@ class SearchState[A](start: A, neighborFinders: (A => Traversable[(A, Double)])*
   lazy val results = Stream.continually(step)
 }
 
-object testSearch extends QueryParser with Application{
-  import bootstrap.liftweb.Boot
-  val boot = (new Boot)
-  boot.boot
-  
-  val matchExactName = (name: String) => {
-    val res = Member.findAll(By(Member.name, name))
-    for (r <- res) yield (r.toString, 1.0)
-    //r: Traversable[(String, Double)]
-  }
+object testSearch extends QueryParser with Application {  
   
   def test():Unit = {
     print("------SEARCH> ")
     val input = Console.readLine()
     if (input != "q") {
-      val q = parse(input, query)
-      val res = q match {
-        case Success(p, _) => { 
-          val name = p.asInstanceOf[Query].name match {
-            case Some(n) => n
-            case None => ""
-          }
-          val search = new SearchState(name, matchExactName)   
-          search.results.take(10) foreach println  
-        } 
-        case _ => println("Failed to parse")
+      val res = Search.search(input)
+      res match {
+        case Some(r) => r.results.take(10) foreach println
+        case None => println("There was an error in your query")
       }
-
       test()
     } 
   }
