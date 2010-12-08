@@ -206,13 +206,13 @@ class TypeParser(val lexical: TypeLexer = new TypeLexer) extends TokenParsers wi
    * @param str the delimiter to convert
    * @return a parser for the delimiter
    */
-  implicit def string2Delim(str: String): Parser[Any] = 
+  implicit def string2Delim(str: String): Parser[Any] =
     elem("delimiter "+str, {
       case lexical.Delim(x) => x == str
       case _ => false
     })
 
-  lazy val scalaType: PackratParser[Type] = 
+  lazy val scalaType: PackratParser[Type] =
     ( wildcard
     | withTraits<~(rep(annotation|existential))
     | generic<~opt(star)<~(rep(annotation|existential))
@@ -239,18 +239,18 @@ class TypeParser(val lexical: TypeLexer = new TypeLexer) extends TokenParsers wi
     }
 
   lazy val generic: PackratParser[Type] =
-    (typeName|typeVar)~(("["~>rep1sep(scalaType<~opt(bounds), ","))<~"]")<~rep("["~rep1sep(scalaType, ",")~"]") ^^ {
+    (typeName|typeVar)~(("["~>rep1sep(scalaType<~opt(bounds), ","))<~"]")<~rep("["~>(rep1sep(scalaType, ",")<~"]")) ^^ {
       case constructor ~ args => Type.createTypeApp(constructor, args)
       case _ => error("Failed to parse generic")
     }
 
- 
+
   lazy val wildcard: PackratParser[Type] =
     elem("underscore", _.isInstanceOf[lexical.Wildcard]) ^^ {
       _ => Type.wildcard
     }
 
-  lazy val function: PackratParser[Type] = 
+  lazy val function: PackratParser[Type] =
     rep1(("("~> repsep(funcParam, ","))<~ ")")~opt("=>")~scalaType ^^ {
       case args ~ _ ~ ret => Type.createFunction(args, ret)
     } |
