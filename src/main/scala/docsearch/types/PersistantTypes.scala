@@ -225,6 +225,7 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
   object args extends MappedOneToMany(Arg, Arg.in, OrderBy(Arg.id, Ascending)) //list of args
 
   object elements extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.id, Ascending)) //tuples
+  object elemOrder extends MappedInt(this)
   object typeFK extends MappedLongForeignKey(this, Type) //foreign key for self referencing
 //  object typeParams extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.id, Ascending))  //Instance of
 
@@ -356,7 +357,10 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
   def createTuple(elems: List[Type]) = {
     require(elems.length >= 1) // All tuples have at least 1 element
     var tuple = Type.create.typeType(TypeType.Tuple)
-    elems foreach {x => tuple.elements += x}
+    for ((elem, i) <- elems.zipWithIndex) {
+      elem.save
+      tuple.elements += elem.elemOrder(i).saveMe
+    }
     tuple.save
     assert(tuple.elements.length > 0)
     tuple
