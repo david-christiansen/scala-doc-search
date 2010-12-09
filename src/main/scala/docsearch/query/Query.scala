@@ -6,7 +6,6 @@ import docsearch.types.{Member, Type, Class}
 
 import net.liftweb.mapper._
 
-
 sealed abstract class QType {
 //def query(): List[(Type.Somefield, Type.Somefield Type)] I think this is what I really want   MappedField
   def query(): List[Type]//List[QueryParam] //I think is much less efficient
@@ -19,7 +18,7 @@ case class QTuple(elems: List[QType]) extends QType {
   def query = Type.findAll(By(Type.typeType, TypeType.Tuple))
                            //By(Type.elements, queryParams))
 }
-case class QFunc(args: List[QType]) extends QType {
+case class QFunc(args: List[QType], res: QType) extends QType {
   def query() = List()
 }
 
