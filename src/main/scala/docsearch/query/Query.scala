@@ -8,7 +8,7 @@ import net.liftweb.mapper._
 
 sealed abstract class QType
 case class QTuple(elems: List[QType]) extends QType
-case class QFunc(args: List[QType]) extends QType
+case class QFunc(args: List[QType], res: QType) extends QType
 case class QTVar(name: String) extends QType
 case class QTName(name: String) extends QType
 case class QTApp(op: QType, args: List[QType]) extends QType
