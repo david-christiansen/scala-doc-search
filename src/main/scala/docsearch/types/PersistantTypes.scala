@@ -7,6 +7,9 @@ import net.liftweb.common.{Box,Full,Empty,Failure,ParamFailure}
 
 import scala.tools.nsc.doc.{model, Universe}
 
+import scala.xml._
+import docsearch.utils._
+
 object Variance extends Enumeration {
   type Variance = Value
   val Covariant = Value("covariant")
@@ -102,6 +105,35 @@ class Class extends LongKeyedMapper[Class] with IdPK with OneToMany[Long, Class]
     //FIXME add type params and such
     path.map(_.name.is).mkString(".")
   }
+
+  private def whichTypeXhtml(): NodeSeq = this.tlt.is match {
+    case TopLevelType.Package => Text("package")
+    case TopLevelType.Object => Text("object")
+    case TopLevelType.Class => Text("class")
+    case TopLevelType.Trait => Text("trait")
+    case _ => Text ("[]")
+  }
+
+  private def classNameXhtml: NodeSeq = {
+    <span class="className" id={this.id.toString}>{this.name.is}</span> ++
+    (if (this.typeParams.length > 0)
+      <span class="typeParams">
+        {(NodeSeq.Empty ++ this.typeParams.map {
+          tp: TypeParam => <span class="typeParam" id={tp.id.toString}>{tp.name.is}</span>
+         }).mkNodes(Text("["), Text(", "), Text("]"))
+        }
+      </span>
+     else NodeSeq.Empty)
+  }
+
+  private def inheritsXhtml(): NodeSeq =
+    if (this.parents.length > 0)
+      Text(" extends ") ++ this.parents.head.toXhtml ++
+      (NodeSeq.Empty ++ this.parents.tail.flatMap((c: Type) => Text(" with ") ++ this.classNameXhtml))
+    else NodeSeq.Empty
+
+
+  def toXhtml = whichTypeXhtml ++ Text(" ") ++ classNameXhtml ++ Text(" ") ++ inheritsXhtml
 }
 
 object Class extends Class with LongKeyedMetaMapper[Class] {
@@ -239,10 +271,7 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
   object typeArgOrder extends MappedInt(this)
   object typeArgs extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.typeArgOrder, Ascending))
 
-  def toXhtml: scala.xml.NodeSeq = {
-    import scala.xml._
-    import docsearch.utils._
-
+  def toXhtml: NodeSeq = {
     this.typeType match {
       case Tuple => {
         val contentNodes: NodeSeq = this.elements.flatMap(_.toXhtml)
@@ -383,6 +412,14 @@ class Arg extends LongKeyedMapper[Arg] with IdPK with ManyToMany{
   object isImplicit extends MappedBoolean(this)
 
   override def toString() = name + " : " + typ.obj.toString
+
+  def toXhtml(): NodeSeq =
+      <span class="arg">
+        {if (this.isImplicit) Text("Implicit") else NodeSeq.Empty}
+        {Text(this.name.is)}:
+        {this.typ.map(_.toXhtml).openOr(Text("ERROR"))}
+      </span>
+
 }
 
 object Arg extends Arg with LongKeyedMetaMapper[Arg] {
@@ -439,7 +476,8 @@ object Kind extends Kind with LongKeyedMetaMapper[Kind] {
 }
 
 //Member
-class Member extends LongKeyedMapper[Member] with IdPK with OneToMany[Long, Member]{
+class Member extends LongKeyedMapper[Member] with IdPK with OneToMany[Long, Member] {
+
   def getSingleton = Member
   object entityToString extends MappedString(this, 200)
   object name extends MappedString(this, 100)
@@ -455,6 +493,38 @@ class Member extends LongKeyedMapper[Member] with IdPK with OneToMany[Long, Memb
       args.groupBy(_.listOrder.is).toList.sortWith(_._1 < _._1).map(_._2.toList)
     //Now sort the individual argument lists
     lists map {l: List[Arg] => l.sortWith(_.order.is < _.order.is)}
+  }
+
+  def flattenNodes(ns: Seq[NodeSeq]): NodeSeq =
+      ns.foldLeft(NodeSeq.Empty) {(a: NodeSeq, b: NodeSeq) => a ++ b}
+
+  def toXhtml(): NodeSeq = {
+    val memType = this.memType.toString
+    val name = Text(this.name.is)
+    val args: NodeSeq = {
+      val aLists = getArgLists flatMap {
+        argList => <span class="argList">{flattenNodes(argList.map(_.toXhtml)).parenList}</span>
+      }
+      <span class="argLists">{flattenNodes(aLists)}</span>
+    }
+    val resType = resultType.obj.map(_.toXhtml).openOr("NO TYPE!")
+    val typeParams = {
+      if (this.typeParams.length == 0) NodeSeq.Empty
+      else {
+        val params: NodeSeq = this.typeParams map {
+          p: TypeParam => <span class="typeParam" id={p.id.toString}>{p.name.is}</span>
+        }
+        <span class="typeParams">{params.mkNodes(Text("["), Text(", "), Text("]"))}</span>
+      }
+    }
+
+    <span class="member">
+      {Text(memType)}
+      {Text(" ")}
+      <span class="memName">{name}</span>
+      {typeParams}
+      {args}:  {resType}
+    </span>
   }
 }
 

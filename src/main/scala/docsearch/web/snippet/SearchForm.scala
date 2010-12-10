@@ -26,7 +26,9 @@ class SearchForm {
     <form method="get" action="">{widgets}</form>
   }
 
-  private[this] def result(m: types.Member): NodeSeq = Text(m toString)
+  def renderResults(res: List[types.Member]): NodeSeq = {
+    res.map(_.toXhtml).map(x => <li>{x}</li>).foldLeft(NodeSeq.Empty)(_++_)
+  }
 
   def results(contents: NodeSeq): NodeSeq = {
     val toParse = S.param("q") openOr ""
@@ -36,8 +38,11 @@ class SearchForm {
     if (toParse == "") NodeSeq.Empty
     else {
       Searcher.search(toParse) match {
-        case Some(s) => bind("search", contents,
-                             "results" -> s.findResults().toString)
+        case Some(s) => {
+          val results: List[types.Member] = s.findResults()
+          bind("search", contents,
+               "results" -> <div>Found {results.length.toString} results: <ul>{renderResults(results)}</ul></div>)
+        }
         case None => bind("search", contents,
                           "results" -> Text("Couldn't parse '" + toParse + "'"))
       }

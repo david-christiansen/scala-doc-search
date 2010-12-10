@@ -62,24 +62,6 @@ class ModelView {
       OrderBy(types.Member.name, Ascending)
     )
 
-    def className(c: types.Class): NodeSeq = {
-      <span class="className" id={c.id.toString}>{c.name.is}</span> ++
-      (if (c.typeParams.length > 0)
-        <span class="typeParams">
-          {(NodeSeq.Empty ++ c.typeParams.map {
-            tp: types.TypeParam => <span class="typeParam" id={tp.id.toString}>{tp.name.is}</span>
-            }).mkNodes(Text("["), Text(", "), Text("]"))
-          }
-        </span>
-      else NodeSeq.Empty)
-    }
-
-    def inheritsFrom(c: types.Class): NodeSeq =
-      if (c.parents.length > 0)
-        Text(" extends ") ++ c.parents.head.toXhtml ++
-        (NodeSeq.Empty ++ c.parents.tail.flatMap((c: types.Type) => Text(" with ") ++ c.toXhtml))
-      else NodeSeq.Empty
-
     def toggleChildren(parent: types.Class)(contents: NodeSeq): NodeSeq = {
       val id: String = nextFuncName
       val childId: String = nextFuncName
@@ -93,53 +75,6 @@ class ModelView {
           JqId(id)~>JqAfter(childData)
         )
       }
-    }
-
-    def classType(c: types.Class): NodeSeq = c.tlt.is match {
-      case types.TopLevelType.Package => Text("package")
-      case types.TopLevelType.Object => Text("object")
-      case types.TopLevelType.Class => Text("class")
-      case types.TopLevelType.Trait => Text("trait")
-      case _ => Text ("[]")
-    }
-
-    def argNodes(arg: types.Arg): NodeSeq =
-      <span class="arg">
-        {if (arg.isImplicit) Text("Implicit") else NodeSeq.Empty}
-        {Text(arg.name.is)}:
-        {arg.typ.map(_.toXhtml).openOr(Text("ERROR"))}
-      </span>
-
-    def flattenNodes(ns: Seq[NodeSeq]): NodeSeq =
-      ns.foldLeft(NodeSeq.Empty) {(a: NodeSeq, b: NodeSeq) => a ++ b}
-
-    def memberNodes(m: types.Member): NodeSeq = {
-      val memType = m.memType.toString
-      val name = Text(m.name.is)
-      val args: NodeSeq = {
-        val aLists = m.getArgLists flatMap {
-          argList => <span class="argList">{flattenNodes(argList.map(argNodes)).parenList}</span>
-        }
-        <span class="argLists">{flattenNodes(aLists)}</span>
-      }
-      val resType = m.resultType.obj.map(_.toXhtml).openOr("NO TYPE!")
-      val typeParams = {
-        if (m.typeParams.length == 0) NodeSeq.Empty
-        else {
-          val params: NodeSeq = m.typeParams map {
-            p: types.TypeParam => <span class="typeParam" id={p.id.toString}>{p.name.is}</span>
-          }
-          <span class="typeParams">{params.mkNodes(Text("["), Text(", "), Text("]"))}</span>
-        }
-      }
-
-      <span class="member">
-        {Text(memType)}
-        {Text(" ")}
-        <span class="memName">{name}</span>
-        {typeParams}
-        {args}:  {resType}
-      </span>
     }
 
     def memberString(m: types.Member): NodeSeq = {
@@ -161,10 +96,10 @@ class ModelView {
 
     contains.flatMap((p: types.Class) =>
       bind("item", html,
-           "name" -> toggleChildren(p)(classType(p) ++ Text(" ") ++ className(p) ++ inheritsFrom(p)))
+           "name" -> toggleChildren(p)(p.toXhtml))
     ) ++
     members.flatMap((m: types.Member) =>
-      bind("item", html, "name" -> memberNodes(m))
+      bind("item", html, "name" -> m.toXhtml)
     )
   }
 
