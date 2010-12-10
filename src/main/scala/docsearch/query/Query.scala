@@ -88,8 +88,11 @@ case class Query( path: Option[QPath],
     val queryParams =
       (memType map (By(Member.memType, _)) toList) ++
       (name map (By(Member.name, _)) toList) ++
-      List(By(Member.argCounts, args.map(_.length).mkString(",")))
+      (args map {
+        a => By(Member.argCounts, a.map(_.length).mkString(","))
+      }).toList
 
+    println(args.map(_.length).mkString(","))
     val validTypes: Set[Long] = resultType.query() map (_.id.is) toSet
 
     val memberResults = Member.findAll(queryParams:_*) filter { mem: Member =>
@@ -97,17 +100,24 @@ case class Query( path: Option[QPath],
     }
 
     args match {
+      case Some(List(Nil)) => {
+        //Special-case empty arg list due to sets and the like - the filtering happened
+        //on argCounts
+        memberResults
+      }
       case Some(argLists) => {
         val argTypes: List[List[Set[Long]]] =
           for ((argList, outer) <- argLists.zipWithIndex)
           yield for ((arg, inner) <- argList.zipWithIndex)
                 yield arg.query(outer, inner).map(_.member.is).toSet
+        println(argTypes)
 
         val memberFromArgLists: List[Set[Long]] = argTypes map { argList =>
           if (argList.length > 0)
             argList.tail.foldLeft(argList.head)(_ intersect _)
           else Set.empty[Long]
         }
+        println(memberFromArgLists)
         val memberFromArgs: Set[Long] =
           if (memberFromArgLists.length > 0)
             memberFromArgLists.tail.foldLeft(memberFromArgLists.head)(_++_)
