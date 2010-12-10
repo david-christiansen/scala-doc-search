@@ -152,8 +152,10 @@ class QueryParser(val lexical: QueryLexer = new QueryLexer) extends TokenParsers
   }
 
   lazy val concrete: PackratParser[QType] = elem("type", _.isInstanceOf[lexical.Id] )~opt(typeParams) ^^ {
-    case lexical.Id(x)~Some(p) => QTApp(QTName(x), p)
-    case lexical.Id(x)~None    => QTName(x)
+    case lexical.Id(x)~Some(p) if x.length == 1 => QTApp(QTVar(x), p)
+    case lexical.Id(x)~Some(p)                  => QTApp(QTName(x), p)
+    case lexical.Id(x)~None if x.length == 1    => QTVar(x)
+    case lexical.Id(x)~None                     => QTName(x)
   }
 
   lazy val typeParams: PackratParser[List[QType]] = ("["~>repsep(typ, ","))<~"]"
