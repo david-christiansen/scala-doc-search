@@ -11,8 +11,10 @@ object Edits {
 
   val addOptionArg = (q: Query) => {
     def injectOption[T](t: T) = {
-      for (argList <- q.args) yield
-        argList map(x=> if (x == t && (!isOption(x.typ))) {QArg(x.name, QTApp(QTName("Option"), List(x.typ)))} else x)
+      q.args map { args =>
+        for (argList <- args) yield
+          argList map(x=> if (x == t && (!isOption(x.typ))) {QArg(x.name, QTApp(QTName("Option"), List(x.typ)))} else x)
+      }
     }
     //this is ugly and only works for Lists. My head exploded trying to get this to work for List[List[A]]
     //There's probaby a more general and elegant solution that I can't see yet

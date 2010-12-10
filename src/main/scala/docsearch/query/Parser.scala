@@ -140,8 +140,8 @@ class QueryParser(val lexical: QueryLexer = new QueryLexer) extends TokenParsers
     case lexical.Id(x) => x
   }
   
-  lazy val memTypeNameArgs: PackratParser[(Option[MemType], Option[String], List[List[QArg]])] =
-    opt(memType)~opt(name)~rep(argList) ^^ {
+  lazy val memTypeNameArgs: PackratParser[(Option[MemType], Option[String], Option[List[List[QArg]]])] =
+    opt(memType)~opt(name)~opt(rep1(argList)) ^^ {
       case mt~n~al => (mt, n, al)
     }
 
@@ -195,7 +195,7 @@ class QueryParser(val lexical: QueryLexer = new QueryLexer) extends TokenParsers
   
   lazy val query: PackratParser[Query] = opt(path<~hash)~opt(memTypeNameArgs<~colon)~typ ^^ {
     case p~Some((mt, n, a))~t => Query(p, mt, n, a, t)
-    case p~None~t => Query(p, None, None, List(), t)
+    case p~None~t => Query(p, None, None, None, t)
   }
 
   /**

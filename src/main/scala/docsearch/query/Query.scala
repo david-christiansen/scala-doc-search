@@ -74,7 +74,7 @@ case object QTWildcard extends QType {
 case class Query( path: Option[QPath],
                   memType: Option[MemType],
                   name: Option[String],
-                  args: List[List[QArg]],
+                  args: Option[List[List[QArg]]],
                   resultType: QType) {
   override def toString = {
     "Query(path= " + path.toString +
@@ -92,24 +92,29 @@ case class Query( path: Option[QPath],
 
     val validTypes: Set[Long] = resultType.query() map (_.id.is) toSet
 
-    val argTypes: List[List[Set[Long]]] =
-      for ((argList, outer) <- args.zipWithIndex)
-        yield for ((arg, inner) <- argList.zipWithIndex)
-          yield arg.query(outer, inner).map(_.member.is).toSet
-
-    val memberFromArgLists: List[Set[Long]] = argTypes map { argList =>
-      if (argList.length > 0)
-        argList.tail.foldLeft(argList.head)(_ intersect _)
-      else Set.empty[Long]
+    val memberResults = Member.findAll(queryParams:_*) filter { mem: Member =>
+      validTypes.contains(mem.resultType.is)
     }
-    val memberFromArgs: Set[Long] =
-      if (memberFromArgLists.length > 0)
-        memberFromArgLists.tail.foldLeft(memberFromArgLists.head)(_++_)
-      else Set.empty[Long]
 
-    Member.findAll(queryParams:_*).filter { mem: Member =>
-      validTypes.contains(mem.resultType.is) &&
-      (memberFromArgs.size == 0 || memberFromArgs.contains(mem.id.is))
+    args match {
+      case Some(argLists) => {
+        val argTypes: List[List[Set[Long]]] =
+          for ((argList, outer) <- argLists.zipWithIndex)
+          yield for ((arg, inner) <- argList.zipWithIndex)
+                yield arg.query(outer, inner).map(_.member.is).toSet
+
+        val memberFromArgLists: List[Set[Long]] = argTypes map { argList =>
+          if (argList.length > 0)
+            argList.tail.foldLeft(argList.head)(_ intersect _)
+          else Set.empty[Long]
+        }
+        val memberFromArgs: Set[Long] =
+          if (memberFromArgLists.length > 0)
+            memberFromArgLists.tail.foldLeft(memberFromArgLists.head)(_++_)
+          else Set.empty[Long]
+        memberResults.filter(memberFromArgs contains _.id.is)
+      }
+      case None => memberResults
     }
   }
 }
