@@ -251,11 +251,11 @@ class TypeParser(val lexical: TypeLexer = new TypeLexer) extends TokenParsers wi
     }
 
   lazy val function: PackratParser[Type] =
-    rep1(("("~> repsep(funcParam, ","))<~ ")")~opt("=>")~scalaType ^^ {
+    ("("~> repsep(funcParam, ",")<~ ")")~opt("=>")~scalaType ^^ {
       case args ~ _ ~ ret => Type.createFunction(args, ret)
     } |
     (scalaType<~"=>")~scalaType ^^ {
-      case t1 ~ t2 => Type.createFunction(List(List(t1)), t2)
+      case t1 ~ t2 => Type.createFunction(List(t1), t2)
     }
 
 

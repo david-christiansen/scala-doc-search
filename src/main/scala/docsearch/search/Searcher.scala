@@ -6,12 +6,15 @@ import docsearch.query.{QueryParser, Query, QArg}
 import docsearch.types.Member
 
 class Searcher(state: SearchState[Query]) {
+  def findResults(): List[Member] = state.peek.findMatching ++ findResults(0)
   //Right now just make 50 results.  This becomes lazy and infinite later.
-  def findResults(n: Int = 0): List[Member] = {
+  def findResults(n: Int): List[Member] = {
+    println("finding results for " + state.peek)
     if (n > 50) Nil
     else {
       state.step match {
         case Some(q) => {
+          println("got new query "+q)
           val newRes = q.findMatching.take(50 - n)
           newRes ++ findResults(n + newRes.length)
         }
@@ -25,9 +28,8 @@ object Searcher {
   def search(query: String): Option[Searcher] = {
     try {
       val q = ParseQ.parseQ(query)
-      val search = new Searcher(new SearchState(q, Edits.addOptionResult, Edits.addOptionArg))
-      println("foo")
-      Some(search)
+      val search = new Searcher(new SearchState(q, Edits.addOptionResult, Edits.addOptionArg)(SearchNode.nodeOrdering))
+       Some(search)
     } catch {
       case _ => None
     }

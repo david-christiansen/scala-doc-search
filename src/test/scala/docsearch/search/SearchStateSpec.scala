@@ -12,12 +12,12 @@ object SearchStateSpec extends FunSuite {
         yield (a + extra, extra)
     }
 
-    val search = new SearchState(0.0, getNeighbor)
+    val search = new SearchState(0.0, getNeighbor)(SearchNode.nodeOrdering)
     
     var last = -1.0
     for (res <- search.results.take(1000)) {
-      assert(last < res)
-      last = res
+      assert(last < res.get)
+      last = res.get
     }
   }
 }

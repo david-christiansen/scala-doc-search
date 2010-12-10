@@ -27,7 +27,7 @@ class SearchForm {
   }
 
   def renderResults(res: List[types.Member]): NodeSeq = {
-    res.map(_.toXhtml).map(x => <li>{x}</li>).foldLeft(NodeSeq.Empty)(_++_)
+    res.map(x => <dt>{x.in.obj.open_!.toXhtml}</dt><dd>{x.toXhtml}</dd>).foldLeft(NodeSeq.Empty)(_++_)
   }
 
   def results(contents: NodeSeq): NodeSeq = {
@@ -41,7 +41,7 @@ class SearchForm {
         case Some(s) => {
           val results: List[types.Member] = s.findResults()
           bind("search", contents,
-               "results" -> <div>Found {results.length.toString} results: <ul>{renderResults(results)}</ul></div>)
+               "results" -> <div>Found {results.length.toString} results: <dl>{renderResults(results)}</dl></div>)
         }
         case None => bind("search", contents,
                           "results" -> Text("Couldn't parse '" + toParse + "'"))

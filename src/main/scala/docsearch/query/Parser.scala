@@ -140,12 +140,12 @@ class QueryParser(val lexical: QueryLexer = new QueryLexer) extends TokenParsers
     case lexical.Id(x) => x
   }
   
-  lazy val memTypeNameArgs: PackratParser[(Option[MemType], Option[String], List[List[QArg]])] = 
+  lazy val memTypeNameArgs: PackratParser[(Option[MemType], Option[String], List[List[QArg]])] =
     opt(memType)~opt(name)~rep(argList) ^^ {
       case mt~n~al => (mt, n, al)
     }
 
-  lazy val typ: PackratParser[QType] = funcType | tuple | concrete
+  lazy val typ: PackratParser[QType] = funcType | tuple | concrete | wildcard
   
   lazy val tuple: PackratParser[QType] = ("("~>rep1sep(typ, ","))<~")" ^^ {
     case types => QTuple(types)
@@ -161,7 +161,7 @@ class QueryParser(val lexical: QueryLexer = new QueryLexer) extends TokenParsers
   lazy val typeParams: PackratParser[List[QType]] = ("["~>repsep(typ, ","))<~"]"
 
   lazy val arrow: PackratParser[Any] = elem("=>", (t: Elem) => t match {
-    case lexical.Reserved(str) if str == "=>" => true; 
+    case lexical.Reserved(str) if str == "=>" => true;
     case _ => false
   })
 
@@ -170,7 +170,12 @@ class QueryParser(val lexical: QueryLexer = new QueryLexer) extends TokenParsers
   } |
   typ~arrow~typ ^^ {
     case arg~_~res => QFunc(List(arg), res)
-  } 
+  }
+
+  lazy val wildcard: PackratParser[QType] = elem("_", {
+    case lexical.Reserved("_") => true
+    case _ => false
+  }) ^^^ QTWildcard
 
   lazy val hash: PackratParser[Any] = elem("'#'", {
     case lexical.Reserved("#") => true

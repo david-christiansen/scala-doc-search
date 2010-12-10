@@ -175,7 +175,7 @@ object Class extends Class with LongKeyedMetaMapper[Class] {
       te.name.split(" with ") foreach { name: String =>
         val parser = new TypeParser(new ScalaDocTypeLexer(typeVars, types))
         parser.parse(name.replace("\u21d2","=>")) match {
-          case parser.Success(t, _) => if (name contains "BitSet") println(name + " parsed as " + t + " during " + clas.toString); me.parents += t
+          case parser.Success(t, _) => me.parents += t
           case _ => println("Couldn't parse parent type " + name)
         }
       }
@@ -254,10 +254,11 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
   object typeType extends MappedEnum[Type, TypeType.type](this, TypeType) // Type of Type
   object typeVar extends MappedString(this, 100)             //typeVar
   object res extends MappedLongForeignKey(this, Type)     //method or function
-  object args extends MappedOneToMany(Arg, Arg.in, OrderBy(Arg.id, Ascending)) //list of args
+  object args extends MappedOneToMany(Arg, Arg.in, OrderBy(Arg.order, Ascending)) //list of args
 
   object elements extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.id, Ascending)) //tuples
   object elemOrder extends MappedInt(this)
+  object numElems extends MappedInt(this) // number of elements in tuple
   object typeFK extends MappedLongForeignKey(this, Type) //foreign key for self referencing
 //  object typeParams extends MappedOneToMany(Type, Type.typeFK, OrderBy(Type.id, Ascending))  //Instance of
 
@@ -348,12 +349,6 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
       arg.save
       t.typeArgs += arg.typeArgOrder(i).saveMe
     }
-    t.save
-    if (typ.toString contains "BitSet") {
-      print(t + " ")
-      for (a <- t.typeArgs) print(a.id.is + " ")
-      println()
-    }
     t.saveMe
    }
 
@@ -368,24 +363,18 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
     name.saveMe
   }
 
-  def createFunction(args: List[List[Type]], res: Type) = {
-    val method = Type.create.typeType(TypeType.Function).res(res).saveMe
-    var outer, inner = 0
-    for (argList <- args) {
-      inner = 0
-      for (arg <- argList) {
-        method.args += Arg.create.name("anonymous").typ(arg).order(inner).listOrder(outer).saveMe
-        inner += 1
-      }
-      outer += 1
+  def createFunction(args: List[Type], res: Type) = {
+    val f = Type.create.typeType(TypeType.Function).res(res).saveMe
+    for ((arg, i) <- args.zipWithIndex) {
+      f.args += Arg.create.name("anonymous").typ(arg).order(i).saveMe
     }
 
-    method.saveMe
+    f.saveMe
   }
 
   def createTuple(elems: List[Type]) = {
     require(elems.length >= 1) // All tuples have at least 1 element
-    var tuple = Type.create.typeType(TypeType.Tuple)
+    var tuple = Type.create.typeType(TypeType.Tuple).numElems(elems.length)
     for ((elem, i) <- elems.zipWithIndex) {
       elem.save
       tuple.elements += elem.elemOrder(i).saveMe
@@ -401,7 +390,7 @@ object Type extends Type with LongKeyedMetaMapper[Type] {
 }
 
 //Arg, Anonymous methods have no member and name anonymous
-class Arg extends LongKeyedMapper[Arg] with IdPK with ManyToMany{
+class Arg extends LongKeyedMapper[Arg] with IdPK with ManyToMany {
   def getSingleton = Arg
   object name extends MappedString(this, 100)
   object typ extends MappedLongForeignKey(this, Type)
@@ -486,6 +475,7 @@ class Member extends LongKeyedMapper[Member] with IdPK with OneToMany[Long, Memb
   object memType extends MappedEnum[Member,MemType.type](this, MemType)
   object resultType extends MappedLongForeignKey(this, Type)
   object args extends MappedOneToMany(Arg, Arg.member, OrderBy(Arg.listOrder, Ascending))
+  object argCounts extends MappedString(this, 50)
 
   def getArgLists(): List[List[Arg]] = {
     // lists gets the argument lists in the correct order, split from one big list
@@ -563,12 +553,16 @@ object Member extends Member with LongKeyedMetaMapper[Member] {
           inner = 0
           for (arg <- argList){
             val argType = parseMethodArg(arg, d).get
-            mem.args += Arg.create.name(arg.name).typ(argType).isImplicit(arg.isImplicit).order(inner).listOrder(outer).saveMe
+            mem.args += Arg.create.name(arg.name).
+                            typ(argType).
+                            isImplicit(arg.isImplicit).
+                            order(inner).
+                            listOrder(outer).saveMe
             inner += 1
           }
           outer += 1
         }
-        mem.resultType(parseResultType(d).get).save
+        mem.resultType(parseResultType(d).get).argCounts(d.valueParams.map(_.length).mkString(",")).save
       }
       case _ => None
     }

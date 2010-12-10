@@ -24,11 +24,14 @@ object SearchNode {
 class SearchState[A](start: A, neighborFinders: (A => Traversable[(A, Double)])*)(implicit ord: Ordering[SearchNode[A]]) {
   val fringe: PriorityQueue[SearchNode[A]] = new PriorityQueue()
   val seen: Set[A] = Set.empty
+  private[this] var last: A = start
 
   fringe.enqueue(SearchNode(start, 0))
   seen += start
 
   def hasMore(): Boolean = fringe.size > 1
+
+  def peek = last
 
   def step(): Option[A] = {
     if (!hasMore) None
@@ -41,6 +44,7 @@ class SearchState[A](start: A, neighborFinders: (A => Traversable[(A, Double)])*
           fringe.enqueue(SearchNode(neighbor, cost + next.cost))
         }
       }
+      last = next.item
       Some(next.item)
     }
   }
