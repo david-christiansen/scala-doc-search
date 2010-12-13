@@ -25,7 +25,6 @@ class SearchState[A](start: A, neighborFinders: (A => Traversable[(A, Double)])*
   val fringe: PriorityQueue[SearchNode[A]] = new PriorityQueue()
   val seen: Set[A] = Set.empty
   private[this] var last: A = start
-  println("Instantiating searchstate with nf "+neighborFinders)
 
   fringe.enqueue(SearchNode(start, 0))
   seen += start
@@ -35,10 +34,8 @@ class SearchState[A](start: A, neighborFinders: (A => Traversable[(A, Double)])*
   def peek = last
 
   def step(): Option[A] = {
-    println("stepping from "+peek+" with queue " + fringe)
     if (!hasMore) None
     else {
-      println("found")
       val next = fringe.dequeue
       for ((neighbor, cost) <- getNeighbors(next.item)) {
         assert(cost >= 0)
@@ -53,7 +50,7 @@ class SearchState[A](start: A, neighborFinders: (A => Traversable[(A, Double)])*
   }
 
   def getNeighbors(item: A): Traversable[(A, Double)] =
-    {val n = neighborFinders flatMap (_.apply(item)); println("foo: "+n); n}
+    neighborFinders flatMap (_.apply(item))
 
   lazy val results = Stream.continually(step)
 }

@@ -86,3 +86,22 @@ object Edits {
   }
 */ 
 }
+
+object TestEdits extends Application {
+  def test():Unit = {
+    print("------Query> ")
+    val input = Console.readLine()
+    if (input != "q") {
+      try{
+        val r = Searcher.ParseQ.parseQ(input)
+        val ss = new SearchState(r, Edits.addOptionArg)
+        ss.results.take(10) foreach println
+      } catch {
+        case _ => println("Error parsing")
+      }
+      test()
+    }
+  }
+
+  test()
+}
