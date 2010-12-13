@@ -19,7 +19,7 @@ import docsearch.query.{QueryParser, Query, QArg}
 import docsearch.types.Member
 
 class Searcher(state: SearchState[Query]) {
-  def findResults(): List[Member] = state.peek.findMatching ++ findResults(0)
+  def findResults(): List[Member] = findResults(0)
   //Right now just make 2000 results.  This becomes lazy and infinite later.
   def findResults(n: Int): List[Member] = {
     println("finding results for " + state.peek)
@@ -63,16 +63,16 @@ object Searcher {
 
 case object GetMore
 
+import docsearch.web.comet.Results
+
 class CometSearcher(state: SearchState[Query]) extends LiftActor with ListenerManager {
-  import docsearch.web.snippet.Results
+  var resultList: List[(Query, List[Member])] = Nil
 
-  var resultList: List[Member] = state.peek.findMatching()
-
-  protected def createUpdate = {println("createUpdate called, results are "+resultList);Results(resultList)}
+  protected def createUpdate = Results(resultList)
 
   override def lowPriority = {
     case GetMore => state.step match {
-      case Some(newQ) => {resultList ++= newQ.findMatching(); updateListeners(); this ! GetMore}
+      case Some(newQ) => {resultList ++= List((newQ, newQ.findMatching())); updateListeners(); this ! GetMore}
       case None => ()
     }
   }
