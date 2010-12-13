@@ -5,44 +5,28 @@ import docsearch.query._
 object Edits {
   def isOption(t: QType) = {
     t match {
-      case a: QTApp => a.op match{
-        case n: QTName => if (n.name == "Option") true
-                          else false
-        case _ => false
-      } 
+      case QTApp(QTName("Option"),_) => true
       case _ => false
     }           
   }   
-/*    
+
   val addOptionArg = (q: Query) => {
-    def injectOption[T](t: T) = {
-      for (argList <- q.args) yield
-        argList map(x=> if (x == t && (!isOption(x.typ))) {QArg(x.name, QType("Option", List(x.typ)))} else x)
+    def injectOption(t: QArg) = {
+      for (argList <- q.args getOrElse List()) yield
+        argList map(x=> if (x == t && (!isOption(x.typ))) {QArg(x.name, QTApp(QTName("Option"), List(x.typ)))} else x)
     }
-    //this is ugly and only works for Lists. My head exploded trying to get this to work for List[List[A]] 
-    //There's probaby a more general and elegant solution that I can't see yet
-    //((for (i <- d) yield d) zipWithIndex) map(k=>k._1.map(x=>if (d(k._2)==x) {Some(x)} else x))
-    val res = for (argList <- q.args) yield
+    val res = for (argList <- q.args getOrElse List()) yield
                 for (arg <- argList)
-                  yield Query(q.path, 
-                          q.memType, 
-                          q.name, 
-                          injectOption(arg),
-                          q.resultType
-                          )
+                  yield q.copy(args = Some(injectOption(arg)))
     for (r <- res.flatten) yield (r, 0.2)
   }
-*/
-  
+
   val addOptionResult = (q: Query) => {
-    val res = Query(q.path, 
-                    q.memType, 
-                    q.name, 
-                    q.args, 
-                    if(isOption(q.resultType)) { 
-                      q.resultType
-                    } else QTApp(QTName("Option"), List(q.resultType))
-                    )
+    val res = q.copy(resultType = {
+      if(isOption(q.resultType)) { 
+        q.resultType
+      } else QTApp(QTName("Option"), List(q.resultType))
+    })
     List((res,0.3))
   }
 /*  
@@ -101,5 +85,4 @@ object Edits {
     }
   }
 */ 
-
 }
