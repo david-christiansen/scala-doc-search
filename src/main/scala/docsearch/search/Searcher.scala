@@ -28,7 +28,7 @@ object Searcher {
   def search(query: String): Option[Searcher] = {
     try {
       val q = ParseQ.parseQ(query)
-      val search = new Searcher(new SearchState(q, Edits.addOptionResult, Edits.addOptionArg)(SearchNode.nodeOrdering))
+      val search = new Searcher(new SearchState(q, Edits.addOptionResult)(SearchNode.nodeOrdering))
        Some(search)
     } catch {
       case _ => None
