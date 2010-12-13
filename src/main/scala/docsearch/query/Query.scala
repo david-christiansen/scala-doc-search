@@ -83,7 +83,7 @@ case class Query( path: Option[QPath],
                   args: Option[List[List[QArg]]],
                   resultType: QType) {
   override def toString = {
-    "Query is: " + path.map(_.toString + "#").getOrElse("") +
+    path.map(_.toString + "#").getOrElse("") +
     memType.getOrElse("").toString + " " +
     name.getOrElse("").toString +
     args.map(a => a.map(_.mkString("(",",",")")).mkString).getOrElse("") + ": " +
