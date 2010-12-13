@@ -1,10 +1,8 @@
 <lift:surround with="default" at="content">
   <h2>Search</h2>
-  <lift:searchForm.form>
-    <div id="searchBox">Query: <search:input /> <search:submit /></div>
-  </lift:searchForm.form>
-  <lift:searchForm.results>
+  <lift:comet type="CometSearch">
+    <div id="searchBox">Query: <search:input /></div>
     <h3>Results</h3>
     <search:results />
-  </lift:searchForm.results>
+  </lift:comet>
 </lift:surround>

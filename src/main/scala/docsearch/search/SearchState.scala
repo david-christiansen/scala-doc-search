@@ -12,7 +12,7 @@ object SearchNode {
   /**
    * Order search nodes by their associated costs.
    */
-  implicit def nodeOrdering[A]: Ordering[SearchNode[A]] = 
+  implicit def nodeOrdering[A]: Ordering[SearchNode[A]] =
    new Ordering[SearchNode[A]] {
      override def compare(n1: SearchNode[A], n2: SearchNode[A]): Int =
        if (n1.cost == n2.cost) 0
@@ -35,10 +35,8 @@ class SearchState[A](start: A, neighborFinders: (A => Traversable[(A, Double)])*
   def peek = last
 
   def step(): Option[A] = {
-    println("stepping from "+peek+" with queue " + fringe)
     if (!hasMore) None
     else {
-      println("found")
       val next = fringe.dequeue
       for ((neighbor, cost) <- getNeighbors(next.item)) {
         assert(cost >= 0)
