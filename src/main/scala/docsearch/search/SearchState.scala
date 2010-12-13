@@ -53,7 +53,7 @@ class SearchState[A](start: A, neighborFinders: (A => Traversable[(A, Double)])*
   }
 
   def getNeighbors(item: A): Traversable[(A, Double)] =
-    {val n = neighborFinders flatMap (_.apply(item)); println("foo: "+n); n}
+    neighborFinders flatMap (_.apply(item))
 
   lazy val results = Stream.continually(step)
 }

@@ -3,12 +3,14 @@ package docsearch.search
 import docsearch.query._
 
 object Edits {
+  lazy val defaultEdits = List(addOptionArg, addOptionResult, reCurry)
+
   def isOption(t: QType) = {
     t match {
       case QTApp(QTName("Option"),_) => true
       case _ => false
-    }           
-  }   
+    }
+  }
 
   val addOptionArg = (q: Query) => {
     def injectOption(t: QArg) = {
@@ -29,6 +31,41 @@ object Edits {
     })
     List((res,0.3))
   }
+
+  //Enumerate the way of splitting n up into sequences of numbers that add to n
+  def splits(n: Int): List[List[Int]] = {
+    require(n >= 0);
+    if (n == 0) Nil
+    else {
+      List(List(n)) ++ (for (m <- 1 to (n-1) toList; split <- splits(m)) yield (n-m) :: split)
+    }
+  }
+
+  def splitList[A](list: List[A]): List[List[List[A]]] = {
+    def oneSplit(input: List[A], splitSpec: List[Int]): List[List[A]] = {
+      require(input.length == splitSpec.foldLeft(0)(_+_))
+      splitSpec match {
+        case n :: ns => input.take(n) :: oneSplit(input.drop(n), ns)
+        case Nil => Nil
+      }
+    }
+    val splitSpecs = splits(list.length)
+    for (spec <- splitSpecs) yield oneSplit(list, spec)
+  }
+
+  val reCurryCost = 0.7 //Cost parameter of recurrying
+
+  val reCurry = (q: Query) => {
+    q.args map {
+      argLists: List[List[QArg]] =>
+      val flatArgs = argLists.flatten
+      for (currying <- splitList(flatArgs)) yield (q.copy(args=Some(currying)), reCurryCost)
+    } match {
+      case Some(neighbors) => neighbors
+      case None => Nil
+    }
+  }
+
 /*  
   val curry = (q: Query) => {
   //FIXME Only curries the first curriable argument starting from the left
