@@ -7,11 +7,12 @@ import docsearch.types.Member
 
 class Searcher(state: SearchState[Query]) {
   def findResults(): List[Member] = state.peek.findMatching ++ findResults(0)
-  //Right now just make 50 results.  This becomes lazy and infinite later.
+  //Right now just make 2000 results.  This becomes lazy and infinite later.
   def findResults(n: Int): List[Member] = {
     println("finding results for " + state.peek)
-    if (n > 50) Nil
+    if (n > 2000) Nil
     else {
+      println("else branch")
       state.step match {
         case Some(q) => {
           println("got new query "+q)
