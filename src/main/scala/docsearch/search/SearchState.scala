@@ -25,7 +25,6 @@ class SearchState[A](start: A, neighborFinders: (A => Traversable[(A, Double)])*
   val fringe: PriorityQueue[SearchNode[A]] = new PriorityQueue()
   val seen: Set[A] = Set.empty
   private[this] var last: A = start
-  println("Instantiating searchstate with nf "+neighborFinders)
 
   fringe.enqueue(SearchNode(start, 0))
   seen += start
