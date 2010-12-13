@@ -12,6 +12,7 @@ sealed abstract class QType {
 }
 
 case class QTuple(elems: List[QType]) extends QType {
+  override def toString = elems.mkString("(", ",",")")
   def query = {
     val elemParents: List[Set[Long]] = elems.zipWithIndex map {
       case (qt, i) => qt.query.filter(_.elemOrder.is == i).map(_.typeFK.is).toSet
@@ -21,6 +22,7 @@ case class QTuple(elems: List[QType]) extends QType {
   }
 }
 case class QFunc(args: List[QType], res: QType) extends QType {
+  override def toString = args.mkString("(", ",",")") + ": " + res.toString
   def query() = {
     val argParentIds = args.zipWithIndex map {
       case (qt, i) =>
@@ -40,11 +42,13 @@ case class QFunc(args: List[QType], res: QType) extends QType {
 }
 
 case class QTVar(name: String) extends QType {
+  override def toString = name
   //FIXME: Worry about consistent assignments of vars
   def query() = Type.findAll(By(Type.typeType, TypeType.TypeVar))
 }
 
 case class QTName(name: String) extends QType {
+  override def toString = name
   def query() = {
     Type.findAll(By(Type.typeType, TypeType.ConcreteDummy), Like(Type.name, "%."+name)) ++
     Type.findAll(By(Type.typeType, TypeType.ConcreteDummy), By(Type.name, name)) ++
@@ -53,6 +57,7 @@ case class QTName(name: String) extends QType {
 }
 
 case class QTApp(op: QType, args: List[QType]) extends QType {
+  override def toString = op.toString + args.mkString("[",",","]")
   def query() = {
     val opT = op.query
     val argApps = args.zipWithIndex map {
@@ -68,6 +73,7 @@ case class QTApp(op: QType, args: List[QType]) extends QType {
 }
 
 case object QTWildcard extends QType {
+  override def toString = "_"
   def query() = Type.findAll
 }
 
@@ -77,11 +83,11 @@ case class Query( path: Option[QPath],
                   args: Option[List[List[QArg]]],
                   resultType: QType) {
   override def toString = {
-    "Query(path= " + path.toString +
-    ", memtype= " + memType.toString +
-    ", name= " + name.toString +
-    ", args= " + args.toString +
-    ", resulttype= " + resultType + ")"
+    "Query is: " + path.getOrElse("").toString + "#" +
+    memType.getOrElse("").toString + " " +
+    name.getOrElse("").toString +
+    {args match {case Some(a) => a map(_.mkString("(",",",")")); case _ => ""}} + ": " +
+    resultType.toString
   }
   def findMatching(): List[Member] = {
     println("Finding matching for " + this)
