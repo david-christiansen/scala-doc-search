@@ -63,12 +63,12 @@ object Searcher {
 
 case object GetMore
 
-class CometSearcher(var state: SearchState[Query]) extends LiftActor with ListenerManager {
+class CometSearcher(state: SearchState[Query]) extends LiftActor with ListenerManager {
   import docsearch.web.snippet.Results
 
-  private var resultList: List[Member] = state.peek.findMatching()
+  var resultList: List[Member] = state.peek.findMatching()
 
-  def createUpdate = {println("createUpdate called, results are "+resultList);Results(resultList)}
+  protected def createUpdate = {println("createUpdate called, results are "+resultList);Results(resultList)}
 
   override def lowPriority = {
     case GetMore => state.step match {
