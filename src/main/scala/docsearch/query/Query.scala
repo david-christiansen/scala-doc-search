@@ -83,10 +83,10 @@ case class Query( path: Option[QPath],
                   args: Option[List[List[QArg]]],
                   resultType: QType) {
   override def toString = {
-    "Query is: " + path.getOrElse("").toString + "#" +
+    "Query is: " + path.map(_.toString + "#").getOrElse("") +
     memType.getOrElse("").toString + " " +
     name.getOrElse("").toString +
-    {args match {case Some(a) => a map(_.mkString("(",",",")")); case _ => ""}} + ": " +
+    args.map(a => a.map(_.mkString("(",",",")")).mkString).getOrElse("") + ": " +
     resultType.toString
   }
   def findMatching(): List[Member] = {
