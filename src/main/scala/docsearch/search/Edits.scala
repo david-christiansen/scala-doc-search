@@ -66,13 +66,48 @@ trait AddOptionEdits {
 
 }
 
-object Edits extends ReCurryEdit with AddOptionEdits {
-  lazy val defaultEdits = List(addOptionArg, addOptionResult, reCurry)
+trait ArgOrderEdit {
 
-/*  
+   //This permute method is taken from
+   //http://scala-forum.org/read.php?4,330,2410#msg-2410
+
+  private def permute[T](list: List[T]): List[List[T]] = {
+    def removeFirst[T](elt: T, list: List[T]) : List[T] = list match {
+      case Nil => Nil
+      case x :: rest if (x == elt) => rest
+      case other :: rest => other :: removeFirst(elt, rest)
+    }
+    list match {
+      case Nil => List(Nil)
+      case _ => for {
+        elt <- list
+        rest <- permute(removeFirst(elt,list))
+      } yield elt::rest
+    }
+  }
+
+  private def permuteSubLists[A](lists: List[List[A]]): List[List[List[A]]] =
+    lists match {
+      case Nil => Nil
+      case l :: Nil => permute(l) map (List(_))
+      case l :: ls => for (perm <- permute(l); rest <- permuteSubLists(ls)) yield perm::rest
+    }
+
+  val newArgOrder = (q: Query) => {
+    q.args match {
+      case Some(argLists) => for (newArgs <- permuteSubLists(argLists)) yield (q.copy(args=Some(newArgs)), 0.5)
+      case None => Nil
+    }
+  }
+}
+
+object Edits extends ReCurryEdit with AddOptionEdits with ArgOrderEdit {
+  lazy val defaultEdits = List(addOptionArg, addOptionResult, reCurry, newArgOrder)
+
+/*
 
   val argOrder = (q: Query) => {
-    //TODO Reference: Permute method taken from http://scala-forum.org/read.php?4,330,2410#msg-2410
+ 
     //FIXME only works on non curried functions because of how this algorithm reduces things down
     def permute[T](liste: List[T]): List[List[T]] = {     
       def retire[T](elt: T, liste: List[T]) : List[T] = liste match {
