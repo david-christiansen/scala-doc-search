@@ -39,12 +39,14 @@ trait ReCurryEdit {
 }
 
 trait AddOptionEdits {
-  def isOption(t: QType) = {
+  private def isOption(t: QType) = {
     t match {
       case QTApp(QTName("Option"),_) => true
       case _ => false
     }
   }
+
+  private def wrapOption(t: QType) = QTApp(QTName("Option"), List(t))
 
   val addOptionArg = (q: Query) => {
     def injectOption(t: QArg) = {
@@ -58,12 +60,8 @@ trait AddOptionEdits {
   }
 
   val addOptionResult = (q: Query) => {
-    val res = q.copy(resultType = {
-      if(isOption(q.resultType)) {
-        q.resultType
-      } else QTApp(QTName("Option"), List(q.resultType))
-    })
-    List((res,0.3))
+    if (isOption(q.resultType)) Nil
+    else (q.copy(resultType=wrapOption(q.resultType)), 0.3) :: Nil
   }
 
 }
