@@ -1,6 +1,9 @@
 package docsearch.search
 
 import docsearch.query._
+import docsearch.types.{Class, Inheritance, Type}
+
+import net.liftweb.mapper._
 
 trait ReCurryEdit {
   //Enumerate the way of splitting n up into sequences of numbers that add to n
@@ -101,43 +104,20 @@ trait ArgOrderEdit {
   }
 }
 
-object Edits extends ReCurryEdit with AddOptionEdits with ArgOrderEdit {
-  lazy val defaultEdits = List(addOptionArg, addOptionResult, reCurry, newArgOrder)
-
-/*
-
-  val argOrder = (q: Query) => {
- 
-    //FIXME only works on non curried functions because of how this algorithm reduces things down
-    def permute[T](liste: List[T]): List[List[T]] = {     
-      def retire[T](elt: T, liste: List[T]) : List[T] = liste match {
-        case Nil => Nil
-        case x::reste if (x == elt) => reste
-        case other::reste => other::retire(elt, reste)
-      }
-     
-      liste match {
-        case Nil => List(Nil)
-        case _ => for { 
-                  elt <- liste
-                  reste <- permute(retire(elt,liste))
-                } yield elt::reste
-      }
-    }
-    if (q.args.size > 1 || q.args.size < 1) List()
-    else {
-      val argsLists = permute(q.args.head)
-      val res = for (argList <- argsLists) yield
-        Query(q.path, 
-          q.memType, 
-          q.name, 
-          List(argList), 
-          q.resultType
-          )
-        for (r <- res) yield (r, 0.1)
-    }
+trait superTypeEdit {
+  import bootstrap.liftweb.Boot
+  val boot = (new Boot)
+  boot.boot
+  val resultSuperType = (q: Query) => {
+    val clas = Class.findAll(By(Class.name, q.resultType.toString))
+    for (c <- clas; p <- c.parents if p.name != "AnyRef" ) yield (q.copy(resultType = p.toQType), 1.0)
   }
-*/ 
+}
+
+object QParser extends QueryParser
+
+object Edits extends ReCurryEdit with AddOptionEdits with ArgOrderEdit with superTypeEdit{
+  lazy val defaultEdits = List(addOptionArg, addOptionResult, reCurry, newArgOrder, resultSuperType)
 }
 
 object TestEdits extends Application {
@@ -147,8 +127,8 @@ object TestEdits extends Application {
     if (input != "q") {
       try{
         val r = Searcher.ParseQ.parseQ(input)
-        val ss = new SearchState(r, Edits.addOptionArg)
-        ss.results.take(10) foreach println
+        val ss = new SearchState(r, Edits.defaultEdits:_*)
+        ss.results.take(10) foreach(x=>println(x.getOrElse("No More Queries").toString))
       } catch {
         case _ => println("Error parsing")
       }
