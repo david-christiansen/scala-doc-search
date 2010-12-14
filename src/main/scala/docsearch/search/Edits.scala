@@ -105,9 +105,6 @@ trait ArgOrderEdit {
 }
 
 trait superTypeEdit {
-  import bootstrap.liftweb.Boot
-  val boot = (new Boot)
-  boot.boot
   val resultSuperType = (q: Query) => {
     val clas = Class.findAll(By(Class.name, q.resultType.toString))
     for (c <- clas; p <- c.parents if p.name != "AnyRef" ) yield (q.copy(resultType = p.toQType), 1.0)
@@ -121,6 +118,9 @@ object Edits extends ReCurryEdit with AddOptionEdits with ArgOrderEdit with supe
 }
 
 object TestEdits extends Application {
+  import bootstrap.liftweb.Boot
+  val boot = (new Boot)
+  boot.boot
   def test():Unit = {
     print("------Query> ")
     val input = Console.readLine()
