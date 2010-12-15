@@ -16,8 +16,8 @@ object SearchNode {
    new Ordering[SearchNode[A]] {
      override def compare(n1: SearchNode[A], n2: SearchNode[A]): Int =
        if (n1.cost == n2.cost) 0
-       else if (n1.cost < n2.cost) -1
-       else 1
+       else if (n1.cost < n2.cost) 1
+       else -1
    }
 }
 

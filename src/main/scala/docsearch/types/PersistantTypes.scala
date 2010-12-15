@@ -1,6 +1,7 @@
 package docsearch.types
 
 import docsearch.dumper.{TPParser, TypeParser, ScalaDocTypeLexer}
+import docsearch.query._
 
 import net.liftweb.mapper._
 import net.liftweb.common.{Box,Full,Empty,Failure,ParamFailure}
@@ -313,6 +314,22 @@ class Type extends LongKeyedMapper[Type] with IdPK with OneToMany[Long, Type] wi
       case ConcreteDummy => this.name.is
       case TypeApp => this.appOp.obj.openOr("NOT FOUND!!").toString + this.typeArgs.map(_.toString).mkString("[", ", ", "]")
       case Wildcard => "_"
+    }
+  }
+  def toQType: QType= {
+    this.typeType match {
+      case Tuple => QTuple(this.elements.map(_.toQType).toList)
+      case Function => {
+        val argTypes = this.args.map(_.typ.obj.map(_.toQType).openOr(error("ERRORTYPE on method toQType"))).toList
+        QFunc(argTypes, this.res.obj.map(_.toQType).openOr(error("ERRORTYPE on method toQType")))
+      }
+      //case Method => this.args.map(_.toString).mkString("(", ", ", ")") + "method"
+      case TypeVar => QTVar(this.typeVar.is)
+      case ConcreteType => QTName(this.concreteType.obj.map(_.toString).openOr(error("ERRORTYPE on method toQType in ConcreteType")))
+      case ConcreteDummy => QTName(this.name.is)
+      case TypeApp => QTApp(this.appOp.obj.openOr(error("ERRORTYPE on method toQType in TypeApp")).toQType, 
+                            this.typeArgs.map(_.toQType).toList)
+      case Wildcard => QTWildcard
     }
   }
 

@@ -1,6 +1,9 @@
 package docsearch.search
 
 import docsearch.query._
+import docsearch.types.{Class, Inheritance, Type}
+
+import net.liftweb.mapper._
 
 trait ReCurryEdit {
   //Enumerate the way of splitting n up into sequences of numbers that add to n
@@ -101,20 +104,31 @@ trait ArgOrderEdit {
   }
 }
 
-object Edits extends ReCurryEdit with AddOptionEdits with ArgOrderEdit {
-  lazy val defaultEdits = List(addOptionArg, addOptionResult, reCurry, newArgOrder)
+trait superTypeEdit {
+  val resultSuperType = (q: Query) => {
+    val clas = Class.findAll(By(Class.name, q.resultType.toString))
+    for (c <- clas; p <- c.parents if p.name != "AnyRef" ) yield (q.copy(resultType = p.toQType), 1.0)
+  }
+}
 
+object QParser extends QueryParser
+
+object Edits extends ReCurryEdit with AddOptionEdits with ArgOrderEdit with superTypeEdit{
+  lazy val defaultEdits = List(addOptionArg, addOptionResult, reCurry, newArgOrder, resultSuperType)
 }
 
 object TestEdits extends Application {
+  import bootstrap.liftweb.Boot
+  val boot = (new Boot)
+  boot.boot
   def test():Unit = {
     print("------Query> ")
     val input = Console.readLine()
     if (input != "q") {
       try{
         val r = Searcher.ParseQ.parseQ(input)
-        val ss = new SearchState(r, Edits.addOptionArg)
-        ss.results.take(10) foreach println
+        val ss = new SearchState(r, Edits.defaultEdits:_*)
+        ss.results.take(10) foreach(x=>println(x.getOrElse("No More Queries").toString))
       } catch {
         case _ => println("Error parsing")
       }
