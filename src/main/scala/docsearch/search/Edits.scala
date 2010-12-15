@@ -104,40 +104,6 @@ trait ArgOrderEdit {
 object Edits extends ReCurryEdit with AddOptionEdits with ArgOrderEdit {
   lazy val defaultEdits = List(addOptionArg, addOptionResult, reCurry, newArgOrder)
 
-/*
-
-  val argOrder = (q: Query) => {
- 
-    //FIXME only works on non curried functions because of how this algorithm reduces things down
-    def permute[T](liste: List[T]): List[List[T]] = {     
-      def retire[T](elt: T, liste: List[T]) : List[T] = liste match {
-        case Nil => Nil
-        case x::reste if (x == elt) => reste
-        case other::reste => other::retire(elt, reste)
-      }
-     
-      liste match {
-        case Nil => List(Nil)
-        case _ => for { 
-                  elt <- liste
-                  reste <- permute(retire(elt,liste))
-                } yield elt::reste
-      }
-    }
-    if (q.args.size > 1 || q.args.size < 1) List()
-    else {
-      val argsLists = permute(q.args.head)
-      val res = for (argList <- argsLists) yield
-        Query(q.path, 
-          q.memType, 
-          q.name, 
-          List(argList), 
-          q.resultType
-          )
-        for (r <- res) yield (r, 0.1)
-    }
-  }
-*/ 
 }
 
 object TestEdits extends Application {
