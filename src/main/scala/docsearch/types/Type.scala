@@ -1,57 +1,26 @@
-/*
-package docsearch.types
+package docsearch.types.nondb
 import docsearch.types.MemType._
+import scala.xml._
 
-
-
-object ClassOrTrait extends Enumeration {
-  type ClassOrTrait = Value
-  val Class = Value("class")
-  val Trait = Value("trait")
-}
-import ClassOrTrait._
-
-case class Arg(name: String, typ: Type)
-
-abstract sealed class Package {
-  def path(): List[Package]
-}
-case object PathRoot extends Package {
-  def path() = List(this)
-}
-case class NamedPackage(in: Package, name: String) extends Package {
-  def path() = in.path ++ List(this)
+sealed abstract class Type {
+  def toXML: NodeSeq
 }
 
-case class Object(in: Package, name: String, members: List[Member]) extends Package {
-  def path() = in.path ++ List(this)
+object Type {
+  def fromXML(xml: NodeSeq): Type = error("Later")
 }
 
-case class Class(name: String, 
-                 in: Package,
-                 members: List[Member], 
-                 inherits: List[Class], 
-                 constructor: List[Arg],
-                 typeParams: List[(String, Kind)],
-                 classOrTrait: ClassOrTrait) extends Package {
-  def path() = in.path ++ List(this)
+case class Tuple(elems: List[Type]) extends Type {
+  def toXML = <tuple>{for ((elt, idx) <- elems.zipWithIndex) yield <elem index={idx.toString}>{elt.toXML}</elem>}</tuple>
 }
 
-abstract sealed class Kind {
-  def --> (k: Kind) = new -->(this, k)
-}
-case object * extends Kind {
-  override def toString = "*"
-}
-case class -->(from: Kind, to: Kind) extends Kind {
-  override def toString = "(" + from.toString + " --> " + to.toString + ")"
+case class Function(args: List[Type], res: Type) extends Type {
+  def toXML = <function><args></args><result>{res.toXML}</result></function>
 }
 
-abstract sealed class Type
-case class Tuple(elements: List[Type]) extends Type
-case class Func(args: List[Type], res: Type) extends Type
-case class Method(args: List[List[Arg]], res: Type) extends Type
-case class TypeVar(name: String) extends Type
-case class InstanceOf(type1: Class, typeParams: List[Type]) extends Type
-
-*/
+case class TypeApp(typeOp: Type, typeArgs: List[Type]) extends Type {
+  def toXML = <app>
+                <op>{typeOp.toXML}</op>
+                <args>{for ((arg, idx) <- typeArgs.zipWithIndex) yield <arg index={idx.toString}>{arg.toXML}</arg>}</args>
+              </app>
+}
