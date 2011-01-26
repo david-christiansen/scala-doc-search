@@ -43,10 +43,36 @@ case class Package(in: Container, name: String) extends NonRootContainer {
   def toXML = <package id={id} name={name}/>
 }
 
-case class Class(in: Container, name: String, typeArgs: List[(String, Kind)]) extends NonRootContainer {
-  def toXML = <class id={id} name={name}>{typeArgs map {case (arg, k) => <arg>{arg}</arg>}}</class>
+trait Instantiable[T <: NonRootContainer] {
+  def id: String
 }
 
+case class ClassPlaceholder(in: Container, name: String, typeArgs: List[(String, Kind)]) extends NonRootContainer with Instantiable[ClassPlaceholder] {
+  def toXML =
+    <classPlaceholder id={id} name={name}>
+      <args>{
+        typeArgs map {case (arg, k) => <arg>{arg}</arg>}
+      }</args>
+    </classPlaceholder>
+}
+
+case class Class(in: Container, name: String, typeArgs: List[(String, Kind)], inherits: Type) extends NonRootContainer with Instantiable[Class] {
+  def toXML =
+    <class id={id} name={name}>
+      <args>{
+        typeArgs map {case (arg, k) => <arg>{arg}</arg>}
+      }</args>
+      <inherits>{inherits.toXML}</inherits>
+    </class>
+}
+
+case class Trait(in: Container, name: String, typeArgs: List[(String, Kind)], inherits: Type) extends NonRootContainer with Instantiable[Trait] {
+  def toXML =
+    <trait id={id} name={name}>
+      <args>{typeArgs map {case (arg, k) => <arg>{arg}</arg>}}</args>
+      <inherits>{inherits.toXML}</inherits>
+    </trait>
+}
 
 
 sealed abstract class Type extends CanBeXML
@@ -80,4 +106,16 @@ case class TypeApp(typeOp: Type, typeArgs: List[Type]) extends Type {
                   yield <arg index={idx.toString}>{arg.toXML}</arg>
                 }</args>
               </app>
+}
+
+case class TypeVarDeref(name: String) extends Type {
+  def toXML = <typeVar name={name}/>
+}
+
+case class TraitComposition(base: Type, traits: List[Type]) extends Type {
+  def toXML = <with><base>{base.toXML}</base><traits>{traits.map(_.toXML)}</traits></with>
+}
+
+case class InstanceOf[T <: NonRootContainer](what: Instantiable[T]) extends Type {
+  def toXML = <instance of={what.id} />
 }
