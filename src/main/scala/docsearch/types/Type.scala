@@ -6,7 +6,33 @@ trait CanBeXML {
   def toXML: NodeSeq
 }
 
+trait Deserializer[T] {
+  def fromXML(xml: NodeSeq): Option[T]
+}
 
+sealed abstract class MemType extends CanBeXML
+case object Def extends MemType {
+  def toXML = <def/>
+}
+case object Var extends MemType {
+  def toXML = <var/>
+}
+case object Val extends MemType {
+  def toXML = <val/>
+}
+case object LazyVal extends MemType {
+  def toXML = <lazyVal/>
+}
+object MemType {
+  def fromXML(xml: NodeSeq): MemType =
+    xml match {
+      case <def/> => Def
+      case <var/> => Var
+      case <val/> => Val
+      case <lazyVal/> => LazyVal
+      case _ => error(xml.toString + " is not a valid MemType")
+    }
+}
 
 sealed abstract class Kind extends CanBeXML
 case object * extends Kind {
@@ -16,6 +42,31 @@ case object * extends Kind {
 case class -->(from: Kind, to: Kind) extends Kind {
   override def toString = from.toString + " --> " + to.toString
   def toXML = <arrKind>{from.toXML}{to.toXML}</arrKind>
+}
+
+
+case class Member(in: Container, memType: MemType, name: String, id: String, args: List[List[(String, Type)]], resType: Type) extends CanBeXML {
+  def toXML =
+    <member in={in.id} name={name} id={id}>
+      <memType>{memType.toXML}</memType>
+      <args> {
+        for (argList <- args)
+        yield <argList> {
+          for ((name, typ) <- argList)
+          yield <arg name={name}>{typ.toXML}</arg>
+        } </argList>
+      } </args>
+    </member>
+}
+
+object Member extends Deserializer[Member] {
+  def fromXML(xml: NodeSeq): Some[Member] =
+    xml match {
+      case <member><memType>{mType}</memType><args>{argLists}</args></member> => {
+        //TODO: Extract more data!
+        Some(Member(null, null, null, null, null, null))
+      }
+    }
 }
 
 
