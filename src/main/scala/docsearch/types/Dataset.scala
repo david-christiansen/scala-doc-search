@@ -33,5 +33,6 @@ object Dataset {
 
   private def loadContainers(xml: NodeSeq): Unit = ()
 
-  private def loadMembers(xml: NodeSeq): Unit = ()
+  private def loadMembers(xml: NodeSeq): Unit =
+    for (memberXML <- xml; member <- Member.fromXML(memberXML))
 }
