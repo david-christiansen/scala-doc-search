@@ -2,15 +2,16 @@ package docsearch.dumper
 
 import scala.tools.nsc.doc.{model, Universe}
 import scala.collection.mutable
+import scala.xml.XML
 
-import docsearch.types._
+import docsearch.types.nondb._
 
 object DataDumper {
-  import bootstrap.liftweb.Boot
-  val boot = (new Boot)
-  boot.boot
-  boot.clearDB
-  boot.createDB
+  // import bootstrap.liftweb.Boot
+  // val boot = (new Boot)
+  // boot.boot
+  // boot.clearDB
+  // boot.createDB
 
 
   val seen = mutable.HashSet.empty[model.MemberEntity]
@@ -30,21 +31,39 @@ object DataDumper {
     println("now writing to db")
 
     println("Saving root package to db")
-    packages.find(x => x.toString == "_root_").map(x => Class.createRootPackage(x.toString))  //create root package
+    var data = Dataset
+    data += RootPackage
     println("Saving packages to db")
-    packages.sortWith((x,y)=> x.toString.length < y.toString.length) foreach Class.createPackage
-    println("Saving classes, traits, etc to db")
-    classes.sortWith((x,y)=> x.toString.length < y.toString.length) foreach Class.createClass
-    println("Saving inheritance graph to db")
-    classes.map(Class.addSupers(_))
-
-    val memCount = members.length
-    println("Putting " + memCount + " members and their types in db")
-    for ((mem, thisMem) <- members.zipWithIndex) {
-      if ((thisMem + 1) % 10000 == 0)
-        println(" Reached member " + (thisMem + 1) + " of " + memCount + " (" + (thisMem * 100 / memCount) + ")%")
-      Member.createMember(mem)
+    
+    val sorted = packages.sortWith((x,y)=> x.toString.length < y.toString.length)     
+    for (x <- sorted) {
+      //prepend with root, get path (toString - name), then add the correct general type
+      val searchString = "_root_." + x.toString.replace("." + x.name, "") + "#package"
+      //println("Searching for parent of: "  + x.name + "\twith string:" + searchString)
+      val p = data.containers.getOrElse(searchString, RootPackage)
+      //if (p ==RootPackage) println("search failed")
+      data += Package(p, x.name)
     }
+    
+    println("Saving classes, traits, etc to db")
+    
+    // classes.sortWith((x,y)=> x.toString.length < y.toString.length) foreach Class.createClass
+    
+    
+    
+    // println("Saving inheritance graph to db")
+    // classes.map(Class.addSupers(_))
+
+    // val memCount = members.length
+    // println("Putting " + memCount + " members and their types in db")
+    // for ((mem, thisMem) <- members.zipWithIndex) {
+    //   if ((thisMem + 1) % 10000 == 0)
+    //     println(" Reached member " + (thisMem + 1) + " of " + memCount + " (" + (thisMem * 100 / memCount) + ")%")
+    //   Member.createMember(mem)
+
+    
+    data.containers.keys foreach(x => println("key: " + x))
+    XML.save("data.xml", <scrounge>{data.toXML}</scrounge>, "UTF-8", true, null )
   }
 
   def flatten(obj: model.Entity): List[model.MemberEntity] = {

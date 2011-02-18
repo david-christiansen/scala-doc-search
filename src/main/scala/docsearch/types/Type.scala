@@ -2,6 +2,27 @@ package docsearch.types.nondb
 import docsearch.types.MemType._
 import scala.xml._
 
+object GeneralType extends Enumeration {
+  type GeneralType = Value
+  val Object = Value("object")
+  val Package = Value("package")
+  val Class = Value("class")
+  val Trait = Value("trait")
+  val Tuple = Value("tuple")
+  val Function = Value("function")
+  val Method = Value("method")
+  val TypeVar = Value("type variable")
+  val ConcreteType = Value("concrete type")
+  val ConcreteDummy = Value("concrete type (name only)")
+  val TypeApp = Value("type application")
+  val Wildcard = Value("wildcard")
+  val Def = Value("def")
+  val Val = Value("val")
+  val Var = Value("var")
+  val LazyVal = Value("lazyval")
+}
+import GeneralType._
+
 trait CanBeXML {
   def toXML: NodeSeq
 }
@@ -69,15 +90,15 @@ object Member extends Deserializer[Member] {
     }
 }
 
-
-
 sealed abstract class Container extends CanBeXML {
   def id: String
+  val generalType: GeneralType
 }
 
 case object RootPackage extends Container {
   def toXML = <rootPackage/>
   def id = "_root_"
+  val generalType = GeneralType.Package
 }
 
 sealed abstract class NonRootContainer extends Container {
@@ -86,11 +107,11 @@ sealed abstract class NonRootContainer extends Container {
   def id = in.id + "." + this.name
 }
 
-case class Object(in: Container, name: String) extends NonRootContainer {
+case class Object(in: Container, name: String, generalType: GeneralType = GeneralType.Object) extends NonRootContainer {
   def toXML = <object id={id} name={name}/>
 }
 
-case class Package(in: Container, name: String) extends NonRootContainer {
+case class Package(in: Container, name: String, generalType: GeneralType = GeneralType.Package) extends NonRootContainer {
   def toXML = <package id={id} name={name}/>
 }
 
@@ -98,7 +119,7 @@ trait Instantiable[T <: NonRootContainer] {
   def id: String
 }
 
-case class ClassPlaceholder(in: Container, name: String, typeArgs: List[(String, Kind)]) extends NonRootContainer with Instantiable[ClassPlaceholder] {
+case class ClassPlaceholder(in: Container, name: String, typeArgs: List[(String, Kind)], generalType: GeneralType = GeneralType.Class) extends NonRootContainer with Instantiable[ClassPlaceholder] {
   def toXML =
     <classPlaceholder id={id} name={name}>
       <args>{
@@ -107,7 +128,7 @@ case class ClassPlaceholder(in: Container, name: String, typeArgs: List[(String,
     </classPlaceholder>
 }
 
-case class Class(in: Container, name: String, typeArgs: List[(String, Kind)], inherits: Type) extends NonRootContainer with Instantiable[Class] {
+case class Class(in: Container, name: String, typeArgs: List[(String, Kind)], inherits: Type, generalType: GeneralType = GeneralType.Class) extends NonRootContainer with Instantiable[Class] {
   def toXML =
     <class id={id} name={name}>
       <args>{
@@ -117,7 +138,7 @@ case class Class(in: Container, name: String, typeArgs: List[(String, Kind)], in
     </class>
 }
 
-case class Trait(in: Container, name: String, typeArgs: List[(String, Kind)], inherits: Type) extends NonRootContainer with Instantiable[Trait] {
+case class Trait(in: Container, name: String, typeArgs: List[(String, Kind)], inherits: Type, generalType: GeneralType = GeneralType.Trait) extends NonRootContainer with Instantiable[Trait] {
   def toXML =
     <trait id={id} name={name}>
       <args>{typeArgs map {case (arg, k) => <arg>{arg}</arg>}}</args>

@@ -5,5 +5,11 @@ lib_managed
 scala-src
 src/main/resources/props/default.props
 lift_proto.*
-scratchpad.txt
 target/
+*.xml
+
+#adam specific
+scratchpad.txt
+scala-src-bak1/
+xml.scala
+c.scala
